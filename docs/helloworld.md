@@ -7,6 +7,8 @@ categories: hello
 
 # 你好世界
 
+![](https://github.com/mvilplss/note/blob/master/image/测试.png?raw=true "我是个测试")
+
 ## 你好
 
 ## 我好
