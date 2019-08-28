@@ -1,8 +1,8 @@
 ---
 title: hello world
 date: 2019-01-01 深夜
-tags: hello hi hei
-categories: hello
+tags: [hello,hi,hei]
+categories: hello-sayhello
 ---
 
 # 你好世界
