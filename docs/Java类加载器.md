@@ -1,11 +1,10 @@
 ---
 title: Java类加载器
-date: 2018-01-01
+date: 2018-01-02
 categories: 
 - 开发技术
 tags: 
 - java
-- 类加载器
 ---
 
 ## 什么是类加载器

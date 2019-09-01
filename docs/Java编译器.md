@@ -1,30 +1,18 @@
-import lombok.extern.slf4j.Slf4j;
-import org.junit.Test;
+---
+title: Java编译器
+date: 2018-01-03
+categories: 
+- 开发技术
+tags: 
+- java
+---
 
-import javax.tools.*;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.OutputStream;
-import java.net.URI;
-import java.nio.charset.Charset;
-import java.nio.file.Files;
-import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Locale;
+写过规则引擎的同学都知道drools语言，我们都通过一个drools容器来加载并执行drools写的各种规则,也玩过通过Java的脚本引擎执行过Javascript代码.这些动态加载并运行代码主要是用于编写不同规则,而非在代码中写满各种ifelse判断.
+有的开发同学可能会想,Java语言可以作为想动态语言一样使用吗?答案是可以的,下面我们就开始!
 
-/**
- * All rights Reserved, Designed By www.maihaoche.com
- *
- * @author: 三行（sanxing@maihaoche.com）
- * @date: 2019/9/1
- * @Copyright: 2017-2020 www.maihaoche.com Inc. All rights reserved.
- * 注意：本内容仅限于卖好车内部传阅，禁止外泄以及用于其他的商业目
- */
-@Slf4j
-public class JavaCompilerDemo extends BaseDemo {
-
+## 简单实现
+sun公司在jdk1.6后就正式发布了关于Java编译器的API,下面我们直接看一个简单的例子:
+```
     @Test
     public void simpleCode() throws Exception {
         JavaCompiler javaCompiler = ToolProvider.getSystemJavaCompiler();
@@ -35,7 +23,11 @@ public class JavaCompilerDemo extends BaseDemo {
             log.error("编译失败");
         }
     }
+```
+上面代码是直接对Java源码文件进行编译,编译后的class文件会存在和源码的同一个目录下.
 
+## 带有诊断器的实现
+```
     // 带有诊断器，编译本地磁盘上源码
     @Test
     public void templateCode() throws Exception {
@@ -58,9 +50,27 @@ public class JavaCompilerDemo extends BaseDemo {
             });
         }
     }
+```
 
-    // 文件管理器包装类
-    @Test
+当编译失败后,诊断器会获取编译失败的源码文件名,行数和列数以及失败的具体原因,比如局部变量未初始化使用.
+```
+public class SimpleBean {
+    public String whoami(){
+        int i;
+        return "my name is SimpleBean for testing."+i;
+    }
+}
+// 编译结果
+17:11:13:133|ERROR|main|52|编译失败
+17:11:13:184|ERROR|main|54|ERROR
+17:11:13:184|ERROR|main|55|compiler.err.var.might.not.have.been.initialized
+17:11:13:188|ERROR|main|56|/Users/sanxing/blog/note/code/file/SimpleBean.java>4:53:可能尚未初始化变量i
+```
+
+## 复杂实现
+当我们需要自己在程序运行时候编译Java源码的情况下,大部分源码并非是在磁盘上,很有可能是数据库中.那么我们如何实现呢?下面的例子将会展现Java源码的编译,源码的自由获取,源码编译后的字节码加载到jvm中[类加载器](https://mvilplss.github.io/2018/01/01/Java%E7%B1%BB%E5%8A%A0%E8%BD%BD%E5%99%A8/)并运行其中的方法.
+```
+@Test
     public void forwardingJavaFileManagerCodeWithInvoke() throws Exception {
         JavaCompiler javaCompiler = ToolProvider.getSystemJavaCompiler();
         // 诊断收集器
@@ -83,7 +93,7 @@ public class JavaCompilerDemo extends BaseDemo {
                 forwardingJavaFileManager, // 设置编译后对象输入文件管理器
                 diagnosticCollector, // 设置诊断器
                 null, null,
-                Collections.singleton(new JavaSourceFileObject("SimpleBean.java",getSource("file/SimpleBean.java")))// 设置源文件管理器
+                Collections.singleton(new JavaSourceFileObject("SimpleBean.java",getSource("file/SimpleBean.java")))// 设置源文件管理器,我们可以从任何地方加载,包括DB
         );
         Boolean call = compilerTask.call();
         if (call) {
@@ -105,7 +115,7 @@ public class JavaCompilerDemo extends BaseDemo {
         log.info(s(whoami));
     }
 
-    // 加载字节类加载器 参考：Java类加载器.md
+    // 加载字节类加载器
     class ByteClassLoader extends ClassLoader{
         private byte[] bytes;
 
@@ -160,5 +170,30 @@ public class JavaCompilerDemo extends BaseDemo {
             return source;
         }
     }
+```
+上面代码的简介:
+- 如果要获取到编译后的字节码的字节,我们需要定制自己的JavaFileObject来装载编译结果.
+- 编译的结果获取需要通过文件管理器的包装类`ForwardingJavaFileManager.getJavaFileForOutput()`的方法中设置我们定义的文件对象`ClassByteFileObject`
+- 自定义文件对象来获取输出结果需要继承`SimpleJavaFileObject`并重写`openOutputStream`方法.构造器中Kind为CLASS.
+- 我们把输入的结果存入到`classFileList`中,下面类加载需要用到.
+- 源码的输入同样需要源码的文件对象`JavaSourceFileObject`继承并重写`SimpleJavaFileObject.getCharContent`方法来自定义源文件的字符串,这样我们可以把远程加载过来的Java源码包装成Java文件对象.
+- 定义自己的类字节码加载器`ByteClassLoader`用来加载编译后的class,然后通过反射调用目标方法.
 
-}
+运行结果:
+```
+17:31:47:745|INFO |main|90|编译成功！
+17:31:47:747|INFO |main|105|my name is SimpleBean for testing.
+```
+
+## 参考文献
+- Java doc
+- 《Java核心技术二》
+
+
+
+
+
+
+
+
+
