@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<configuration>
+    <logger name="ch.qos.logback" level="OFF"/>
+        <root level="debug">
+            <appender class="ch.qos.logback.core.ConsoleAppender">
+                <encoder>
+                    <pattern>%yellow(%date{HH:mm:ss:SSS})|%highlight(%-5level)|%highlight(%thread)|%highlight(%line)|%highlight(%msg%n)</pattern>
+                </encoder>
+            </appender>
+        </root>
+</configuration>
