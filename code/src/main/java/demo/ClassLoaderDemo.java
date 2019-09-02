@@ -1,3 +1,5 @@
+package demo;
+
 import jdk.nashorn.internal.runtime.linker.NashornGuards;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.Test;
@@ -5,13 +7,10 @@ import sun.misc.Launcher;
 import sun.misc.URLClassPath;
 
 import java.io.IOException;
-import java.lang.reflect.InvocationTargetException;
-import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.Arrays;
 
 /**
  * All rights Reserved, Designed By www.maihaoche.com

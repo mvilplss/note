@@ -55,6 +55,7 @@ Classloader为了保证加载到jvm中的类的唯一性，通过`双亲委派�
                         c = findBootstrapClassOrNull(name);
                     }
                 } catch (ClassNotFoundException e) {
+                    // 这个catch很关键，执行findClass后位找到class则会抛出异常，所以捕获后可以保证继续父类的子类执行。
                     // ClassNotFoundException thrown if class not found
                     // from the non-null parent class loader
                 }
