@@ -108,7 +108,7 @@ public class HashMapDemo extends BaseDemo {
                             Object rightNode = getFieldValue("right",firstNode);
                             queue.addLast(rightNode);
                         }
-                        if (isNextTree(treeCnt)) {
+                        if (isLayerLastTreeNode(treeCnt)) {
                             System.out.println();
                         }
                         treeCnt++;
@@ -121,12 +121,13 @@ public class HashMapDemo extends BaseDemo {
         }
     }
 
-    // 判断是否是下一层树叶
-    public boolean isNextTree(int num) {
+    // 判断是否是一层树叶的最后一个
+    // 1 3 7 15 31 ...
+    public boolean isLayerLastTreeNode(int num) {
         double n = (Math.log(num + 1) / Math.log(2));
         return n == (int) n;
     }
-
+    // 通过反射获取对象的任意属性
     public Object getFieldValue(String field, Object obj) throws NoSuchFieldException, IllegalAccessException {
         Class<?> aClass = obj.getClass();
         Field declaredField = aClass.getDeclaredField(field);
