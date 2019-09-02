@@ -1,4 +1,4 @@
-package math;
+package demo;
 
 import demo.BaseDemo;
 import lombok.extern.slf4j.Slf4j;
