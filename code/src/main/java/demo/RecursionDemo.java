@@ -59,4 +59,18 @@ public class RecursionDemo extends BaseDemo {
             throw new ClassNotFoundException(path);
         }
     }
+
+    @Test
+    public void simpleRecursion() throws Exception{
+        int[] arr = new int[]{1,2,3};
+        int sum = sumArr(arr,0);
+        System.out.println(sum);
+    }
+
+    public int sumArr(int[] arr,int i) throws Exception{
+        if (i==arr.length){
+            return 0;
+        }
+        return arr[i]+sumArr(arr,i+1);
+    }
 }

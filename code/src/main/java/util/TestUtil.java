@@ -17,4 +17,12 @@ public class TestUtil {
         System.out.println(System.currentTimeMillis()+ ":"+Thread.currentThread().getName()+":"+obj);
     }
 
+    public static void sleep(long millis){
+        try {
+            Thread.sleep(millis);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+    }
+
 }
