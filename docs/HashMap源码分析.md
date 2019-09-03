@@ -237,8 +237,9 @@ static final class TreeNode<K,V> extends LinkedHashMap.Entry<K,V> {
 关于常量的几个疑问：
 1.为什么容量必须是2的n次方？
   为了提高计算效率，hashmap把原来的`取模%`换成了`与&`(两个数都为1则为1，否则为0)位运算，而hash%length==hash&(length-1)的前提是length是2的n次方。
+  hashmap的最小容量是2。
 2.链表转树的阈值和最小树化的容量大小的关系？
-  当hashmap的容量小于64(`MIN_TREEIFY_CAPACITY`)的时候（也就是16，32）如果某个桶上的链表长度大于8（`TREEIFY_THRESHOLD`），则hashmap首先做扩容而不是做树化。如果容量大于等于`MIN_TREEIFY_CAPACITY`的时候有链表大于等于`TREEIFY_THRESHOLD`则做树化。
+  当hashmap的容量小于64(`MIN_TREEIFY_CAPACITY`)的时候（也就是2，4，8，16，32）如果某个桶上的链表长度大于8（`TREEIFY_THRESHOLD`），则hashmap首先做扩容而不是做树化。如果容量大于等于`MIN_TREEIFY_CAPACITY`的时候有链表大于等于`TREEIFY_THRESHOLD`则做树化。
 
 *六个变量*：
 ```
@@ -295,7 +296,7 @@ static final class TreeNode<K,V> extends LinkedHashMap.Entry<K,V> {
     final float loadFactor;
 ```
 关于变量的几个疑问：
-1.hashmap最大可以存多少个key-value？
+1. hashmap最大可以存多少个key-value？
   以前我认为size为int变量，最多可以存储2的32次方个，否则size计数将会出现负数。然而我做了个实验发现确实出现负数了，但是还可以继续存储，所以hashmap理论可以存无限个（取决与你的内存）。
 ```
     @Test
@@ -321,7 +322,7 @@ static final class TreeNode<K,V> extends LinkedHashMap.Entry<K,V> {
 13:34:54:137|INFO |main|311|-2147483647 // 负数增加1
 ```
 
-2.`modCount`记录每次修改+1，有什么作用？
+2. `modCount`记录每次修改+1，有什么作用？
   如果你看过jdk的其他集合源码也会看到这个变量，这个变量通过记录修改次数来实现`fail-fast`的，fail-fast可以防止新同学在多线程中使用hashmap导致的潜在问题，早发现早解决。
 ```
     // fail-fast
@@ -431,7 +432,7 @@ Map<Integer, String> map = new HashMap<>(10,3);
             throw new IllegalArgumentException("Illegal load factor: " +
                                                loadFactor);
         this.loadFactor = loadFactor;
-        // 结果暂存到threshold中
+        // 将容量大小暂存到threshold中，在resize的时候会用来做newCap来初始化容量。
         this.threshold = tableSizeFor(initialCapacity);
     }
     
@@ -501,7 +502,7 @@ n = 00000000 00000000 00000000  00001111
 n = 00000000 00000000 00000000  00010000
 最终转为十进制为：n=16
 ```
-这个函数的最终目的就是把传入的cap-1然后把最高位1的后面所有0转为1，最后在加1得大于等于cap的最小2的n次方值。
+这个函数的最终目的就是把传入的cap-1然后把最高位1的后面所有0转为1，最后在加1得大于等于cap的最小2的n次方值。这里还有个小细节就是当你传入的cap=0的时候，在第6步计算出n为负数，第7步通过两个三元表达式保证n最小为2。
 
 ### hash（）
 ```
@@ -544,7 +545,7 @@ final V putVal(int hash, K key, V value, boolean onlyIfAbsent,
             // 如果是树则按照树的方式存入或获取相同的key的节点赋值给e。
             else if (p instanceof TreeNode)
                 e = ((TreeNode<K,V>)p).putTreeVal(this, tab, hash, key, value);
-            // 否则则为链表，则放入链表
+            // 否则为链表
             else {
                 for (int binCount = 0; ; ++binCount) {
                     if ((e = p.next) == null) {
@@ -604,21 +605,19 @@ final V putVal(int hash, K key, V value, boolean onlyIfAbsent,
         }
     }
 ```
-
-
-源码注释了大部分重要环节，这里不再重复，现在要分析下红黑树的一些操作，如果觉的吃力的同学可以暂时略过！
-#### 红黑树的putTreeVal()
-// TODO
-#### 红黑树的balanceInsertion()
-// TODO
-#### 红黑树的相关旋转和染色
-// TODO
+通过源码分析，put操作主要有以下几个重要步骤：
+1. 
+2. 
+3. 
+4. 
+5. 
+6. 
 
 ### resize()
 当调用hashmap的put操作时候，如果有下面情况则发生扩容：
-1.当table变量为null，调用resize进行初始化。
-2.当新加入一个元素时候发现链表长度>=8但是当前容量小于64，则进行扩容。
-3.当新加入一个元素后元素总数
+1. 当table变量为null，调用resize进行初始化。
+2. 当新加入一个元素时候发现链表长度>=8但是当前容量小于64，则进行扩容。
+3. 当新加入一个元素后元素总数大于threshold
 
 ```
     /**
@@ -636,44 +635,54 @@ final V putVal(int hash, K key, V value, boolean onlyIfAbsent,
         int oldThr = threshold;
         int newCap, newThr = 0;
         if (oldCap > 0) {
+            // 如果容量达到最大还进行扩容，则将阈值设为最大。
             if (oldCap >= MAXIMUM_CAPACITY) {
                 threshold = Integer.MAX_VALUE;
                 return oldTab;
             }
+            // 否则新的容量进行*2
             else if ((newCap = oldCap << 1) < MAXIMUM_CAPACITY &&
                      oldCap >= DEFAULT_INITIAL_CAPACITY)
-                newThr = oldThr << 1; // double threshold
+                newThr = oldThr << 1; // double threshold 扩容阈值也翻倍
         }
+        // 如果使用带指定容量的构造器时候会将容量暂存到threshold上，然后在这里赋值给newCap.
         else if (oldThr > 0) // initial capacity was placed in threshold
             newCap = oldThr;
+        // 默认构造器第一次初始化
         else {               // zero initial threshold signifies using defaults
             newCap = DEFAULT_INITIAL_CAPACITY;
             newThr = (int)(DEFAULT_LOAD_FACTOR * DEFAULT_INITIAL_CAPACITY);
         }
+        //  如果使用带指定容量的构造器时候newThr需要根据newCap计算获取。
         if (newThr == 0) {
             float ft = (float)newCap * loadFactor;
             newThr = (newCap < MAXIMUM_CAPACITY && ft < (float)MAXIMUM_CAPACITY ?
                       (int)ft : Integer.MAX_VALUE);
         }
-        threshold = newThr;
+        threshold = newThr;// 最终赋值给threshold。
         @SuppressWarnings({"rawtypes","unchecked"})
-        Node<K,V>[] newTab = (Node<K,V>[])new Node[newCap];
+        Node<K,V>[] newTab = (Node<K,V>[])new Node[newCap];// 创建新数组
         table = newTab;
+        // 如果老的table不为空则需要重新计算桶位和节点上的元素位置
         if (oldTab != null) {
             for (int j = 0; j < oldCap; ++j) {
                 Node<K,V> e;
                 if ((e = oldTab[j]) != null) {
-                    oldTab[j] = null;
+                    oldTab[j] = null;// 帮助垃圾回收
+                    // 如果只有一个节点那么直接通过hash计算出新的桶位。
                     if (e.next == null)
                         newTab[e.hash & (newCap - 1)] = e;
+                    // 如果节点是个树，那么按照树的方式分解
                     else if (e instanceof TreeNode)
                         ((TreeNode<K,V>)e).split(this, newTab, j, oldCap);
                     else { // preserve order
+                        // 否则是链表，这里链表通过生成两组高低位链表，并且保持链表原来的顺序
                         Node<K,V> loHead = null, loTail = null;
                         Node<K,V> hiHead = null, hiTail = null;
                         Node<K,V> next;
                         do {
                             next = e.next;
+                            // 如果hash&oldCap为0则为低位，也就是原来位置，下面会介绍为什么这样。
                             if ((e.hash & oldCap) == 0) {
                                 if (loTail == null)
                                     loHead = e;
@@ -681,7 +690,7 @@ final V putVal(int hash, K key, V value, boolean onlyIfAbsent,
                                     loTail.next = e;
                                 loTail = e;
                             }
-                            else {
+                            else {// 否则放到高位链表上
                                 if (hiTail == null)
                                     hiHead = e;
                                 else
@@ -689,10 +698,12 @@ final V putVal(int hash, K key, V value, boolean onlyIfAbsent,
                                 hiTail = e;
                             }
                         } while ((e = next) != null);
+                        // 将低位的链表头放到原来的桶位
                         if (loTail != null) {
                             loTail.next = null;
                             newTab[j] = loHead;
                         }
+                        // 将高位的链表头放到原来位置+原来容量的位置
                         if (hiTail != null) {
                             hiTail.next = null;
                             newTab[j + oldCap] = hiHead;
@@ -704,7 +715,16 @@ final V putVal(int hash, K key, V value, boolean onlyIfAbsent,
         return newTab;
     }
 ```
+通过源码分析，resize()可分为以下步骤：
+1. 容量`newCap`、`threshold`阈值的计算和newTab的创建。
+2. 老的单节点直接向新的桶中拷贝。
+3. 老的树节点向新的桶中拷贝。
+4. 老的链节点向新的桶中拷贝，这里通过链表分组方式进行拷贝，同时还保留了原来的链表顺序。
 
+这里有个问题，为什么`(e.hash & oldCap) == 0`位置不变，而需要变的位置为`j + oldCap`?
+- oldCap一定是2的整数次幂, 这里假设是2^m
+- newCap是oldCap的两倍, 则会是2^(m+1)
+- hash对数组大小取模(n - 1) & hash 其实就是取hash的低m位
 
 ## hashmap每个阶段分析
 
@@ -721,7 +741,8 @@ final V putVal(int hash, K key, V value, boolean onlyIfAbsent,
 ## hashmap多线程下的问题
 
 
-
+## 其他说明
+因为这里要消化的东西不算少，所以关于红黑树的知识就单独抽出来介绍。
 ## 参考资料
 
 - https://www.cnblogs.com/zhimingxin/p/8609545.html

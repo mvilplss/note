@@ -21,50 +21,10 @@ import java.util.*;
 public class HashMapDemo extends BaseDemo {
 
     @Test
-    public void xxx() throws Exception {
-        Map<Integer, String> map = new HashMap<>(1, 1f);
-        for (int i = 0; i < 9; i++) {
-            map.put((int) Math.pow(2, i), i + "");
-        }
-
-        Class<HashMap> mapClass = HashMap.class;
-        Field[] fields = mapClass.getDeclaredFields();
-        System.out.println(fields.length);
-        for (Field field : fields) {
-            field.setAccessible(true);
-
-            if ("table".equals(field.getName())) {
-                HashMap.Entry[] table = (HashMap.Entry[]) field.get(map);
-                System.out.println(table.length);
-                for (int i = 0; i < table.length; i++) {
-                    HashMap.Entry entry = table[i];
-                    if (entry != null) {
-                        Class<? extends Map.Entry> aClass = entry.getClass();
-                        Field[] nodeFields = aClass.getDeclaredFields();
-                        for (int j = 0; j < nodeFields.length; j++) {
-                            System.out.println(nodeFields.length);
-                            Field nodeField = nodeFields[j];
-                            nodeField.setAccessible(true);
-                            Object o = nodeField.get(entry);
-                            log.error(nodeField.getName() + "=" + o);
-                        }
-                    }
-                    log.info(s(entry != null ? entry.getClass() : null));
-                }
-                log.info(field.getName() + "=" + Arrays.toString((table)));
-            } else {
-                log.info(field.getName() + "=" + field.get(map));
-
-            }
-
-        }
-    }
-
-    @Test
     public void hashMapRefectionStudy() throws Exception {
-        Map<Integer, String> map = new HashMap<>();
-        for (int i = 0; i < 30; i++) {
-            map.put((int) Math.pow(i, 2), String.valueOf(i));
+        HashMap<Integer, String> map = new HashMap<>();
+        for (int i = 0; i < 14; i++) {
+            map.put((int) Math.pow( 2, i)+3, String.valueOf(i));
         }
         // 相关class准备
         Class<?> nodeClass = Class.forName("java.util.HashMap$Node");
@@ -339,20 +299,22 @@ public class HashMapDemo extends BaseDemo {
         log.info(s(hash));
         log.info(s(Integer.toBinaryString(hash)));
     }
-
+    // oldCap = 32
+    // [3	] link 35=5 67=6 131=7 259=8 515=9 1027=10 2051=11 4099=12
     @Test
     public void o() throws Exception{
-        int i =1;
-        for (int binCount = 0; ; ++binCount) {
-                // 通过binCount来判断更新后的链表是否大于TREEIFY_THRESHOLD
-                if (binCount >= 8 - 1) {// -1 for 1st
-                    System.out.println(binCount);
-                    System.out.println(i);
-                    break;
-                }
-                i++;
+        System.out.println(35&31);
+        System.out.println(67&31);
+        System.out.println(131&31);
 
-        }
+        System.out.println(35&32);
+
+        System.out.println(35&63);
+        System.out.println(67&32);
+        System.out.println(131&32);
+        System.out.println(Integer.toBinaryString(32));
+        System.out.println(Integer.toBinaryString(67));
+        System.out.println(Integer.toBinaryString(131));
     }
 
 }
