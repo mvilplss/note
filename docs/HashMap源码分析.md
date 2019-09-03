@@ -122,25 +122,7 @@ null		null		null		null		null		null		4096=12		16384=14
 [8	] link 8=3 
 [9	] link null
 [10	] link null
-[11	] link null
-[12	] link null
-[13	] link null
-[14	] link null
-[15	] link null
-[16	] link 16=4 
-[17	] link null
-[18	] link null
-[19	] link null
-[20	] link null
-[21	] link null
-[22	] link null
-[23	] link null
-[24	] link null
-[25	] link null
-[26	] link null
-[27	] link null
-[28	] link null
-[29	] link null
+...
 [30	] link null
 [31	] link null
 [32	] link 32=5 96=15 // 链表结构出现
