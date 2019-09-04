@@ -169,7 +169,8 @@ static final class TreeNode<K,V> extends LinkedHashMap.Entry<K,V> {
     }
 }
 ```
-// TODO 此处需要一张结构图
+
+![丑见谅!](https://github.com/mvilplss/note/blob/master/image/hashmap结构.png?raw=true)
 
 说完结构，我们看些hashmap的一些重要常量和成员变量：
 *六个常量*：
