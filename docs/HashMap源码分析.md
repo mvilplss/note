@@ -407,7 +407,7 @@ Map<Integer, String> map = new HashMap<>(10,3);
 ## hashmap几个关键函数
 我们的hashmap结构和一些重要常量和变量了解完后，下面我们将进行分析一些关键的函数。
 
-### sizeFOrTable()
+### sizeForTable()
 ```
     // hashmap构造
     public HashMap(int initialCapacity, float loadFactor) {
