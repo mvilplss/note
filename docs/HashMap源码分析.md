@@ -7,6 +7,8 @@ tags:
 - java
 ---
 ## hashmap研究前准备
+> 当前jdk版本：jdk1.8
+
 为了更好的研究hashmap的数据结构，我们写了个hashmap反射函数，可以打印出当前数据存放结构可视化和各项属性参数，这样可以帮助我们展示hashmap对象的具体情况和参数，下面是源码。
 ```
     @Test
@@ -17,12 +19,12 @@ tags:
             map.put((int) Math.pow(2, i), String.valueOf(i));
         }   
         map.put(96,15+"");
-        // 相关class准备
+        printMapStructure(map);
+    }
+    // 打印map数据结构
+    private void printMapStructure(HashMap map) throws ClassNotFoundException, NoSuchFieldException, IllegalAccessException {
         Class<?> nodeClass = Class.forName("java.util.HashMap$Node");
         Class<?> treeNodeClass = Class.forName("java.util.HashMap$TreeNode");
-        // 获取table大小和相关属性
-        Object[] table = (Object[]) getFieldValue("table", map);
-        log.info("table:" + table.length);
         Object size = getFieldValue("size", map);
         log.info("size:" + size);
         Object modCount = getFieldValue("modCount", map);
@@ -31,6 +33,9 @@ tags:
         log.info("threshold:" + threshold);
         Object loadFactor = getFieldValue("loadFactor", map);
         log.info("loadFactor:" + loadFactor);
+        // 获取table大小和相关属性
+        Object[] table = (Object[]) getFieldValue("table", map);
+        log.info("table:" + table.length);
         // 格式化打印数据
         for (int i = 0; i < table.length; i++) {
             Object o = table[i];
@@ -47,7 +52,7 @@ tags:
                     System.out.println("tree ");
                     // 获取root
                     Object root = o;
-                    // 通过队列实现广度搜索打印
+                    // 通过队列上线广度搜索打印
                     LinkedList<Object> queue = new LinkedList();
                     queue.add(root);
                     int treeCnt = 1;
@@ -588,12 +593,13 @@ final V putVal(int hash, K key, V value, boolean onlyIfAbsent,
     }
 ```
 通过源码分析，put操作主要有以下几个重要步骤：
-1. 
-2. 
-3. 
-4. 
-5. 
-6. 
+1. 判断是否初始化，没有初始化则进行resize操作。
+2. 通过hash值和容量算出桶位，判断桶位上是否已经有元素，没有则创建个node对象直接放进去。
+3. 如果有值则判断当前值的key是否相等（p.hash == hash &&((k = p.key) == key || (key != null && key.equals(k)))，若相等则缓存当前元素到e。
+4. 否则进行判断当前节点是否是树，如果是树，则按照树的方式加入元素。
+5. 如果不是树则按照链表方式加入元素，如果新增元素后链表长度大于8则进行调用treeifyBin，treeifyBin会根据树化阈值和树化最小容量来决定是否要扩容或者树化。
+6. 最后根据onlyIfAbsent来决定已经存在的key是否要替换位新的value，默认是false（替换）。
+7. 在最后的最后在判断当前元素个数size是否大于扩容阈值threshold，如果大于则进行调用resize()进行扩容。
 
 ### resize()
 当调用hashmap的put操作时候，如果有下面情况则发生扩容：
@@ -706,26 +712,234 @@ final V putVal(int hash, K key, V value, boolean onlyIfAbsent,
 这里有个问题，为什么`(e.hash & oldCap) == 0`位置不变，而需要变的位置为`j + oldCap`?
 - oldCap一定是2的整数次幂, 这里假设是2^m
 - newCap是oldCap的两倍, 则会是2^(m+1)
-- hash对数组大小取模(n - 1) & hash 其实就是取hash的低m位
+- hash对数组大小取模(n - 1) & hash 其实就是取hash的低m位.
+
+比如当容量32的时候35值放在第3个桶位，当扩容到64容量时候放到第35桶位的需要移位情况计算：
+```
+容量cap = 32:
+index = (cap-1)&35:
+cap-1:00000000 00000000 00000000 00011111
+&35  :00000000 00000000 00000000 00100011
+=3   :00000000 00000000 00000000 00000011
+
+扩容后新容量nap = 64:
+index = (nap-1)&35:
+nap-1:00000000 00000000 00000000 00111111
+&35  :00000000 00000000 00000000 00100011
+=35  :00000000 00000000 00000000 00100011
+
+当和老的容量cap=32做&运算来判断是否移位，其实就是算下：
+index = cap&35:
+cap  :00000000 00000000 00000000 00100000
+&35  :00000000 00000000 00000000 00100011
+=32  :00000000 00000000 00000000 00100000
+显然结果cap&35=32!=0，需要移位（3+cap）=35。
+```
+
+比如当容量32的时候67值放在第3个桶位，当扩容到64容量时候还是放到第3个桶位：
+```
+容量cap = 32:
+index = (cap-1)&67:
+cap-1:00000000 00000000 00000000 00011111
+&67  :00000000 00000000 00000000 01000011
+=3   :00000000 00000000 00000000 00000011
+
+扩容后新容量nap = 64:
+index = (nap-1)&67:
+nap-1:00000000 00000000 00000000 00111111
+&67  :00000000 00000000 00000000 01000011
+=3   :00000000 00000000 00000000 00000011
+
+当和老的容量cap=32做&运算来判断是否移位，其实就是算下：
+index = cap&67:
+cap  :00000000 00000000 00000000 00100000
+&67  :00000000 00000000 00000000 01000011
+=0   :00000000 00000000 00000000 00000000
+显然结果cap&35=0==0，不需要移位。
+```
 
 ## hashmap每个阶段分析
-
-### 初始化阶段
-
-### 扩容阶段
-
-### 树化阶段
-
-### 多少可以存满
-
-### 链化阶段
-
+到这里的同学应该已经大致了解hashmap的基本原理和关键的函数了，下面我们将通过想hashmap不断的增加数据和减少数据总结每个阶段：
+1. 创建对象阶段
+  当我们使用new HashMap()创建一个对象的时候，只是初始化`loadFactor=DEFAULT_LOAD_FACTOR`值。
+```
+14:02:264|INFO |main|33|size:0
+14:02:265|INFO |main|35|modCount:0
+14:02:265|INFO |main|37|threshold:0
+14:02:274|INFO |main|39|loadFactor:0.75
+```
+2. 初始化容量阶段
+  当添加第一个元素的时候，hashmap进行真正的初始化，主要是创建table容量，默认长度为16。
+```
+16:32:850|INFO |main|33|size:1
+16:32:850|INFO |main|35|modCount:1
+16:32:851|INFO |main|37|threshold:12
+16:32:854|INFO |main|39|loadFactor:0.75
+16:32:854|INFO |main|42|table:16
+```
+3. 扩容量阶段
+  扩容的时候执行resize()，threshold和table容量加倍.
+  - 当元素个数size大于threshold=12时候进行扩容。
+```
+25:36:262|INFO |main|33|size:13
+25:36:263|INFO |main|35|modCount:13
+25:36:263|INFO |main|37|threshold:24
+25:36:272|INFO |main|39|loadFactor:0.75
+25:36:275|INFO |main|42|table:32
+[0	] link 0=0 64=8 
+[1	] link 1=1 
+[2	] link null
+[3	] link null
+[4	] link 4=2 36=6 100=10 
+[5	] link null...
+[8	] link null
+[9	] link 9=3 
+[10	] link null...
+[15	] link null
+[16	] link 16=4 144=12 
+[17	] link 49=7 81=9 
+[18	] link null...
+[25	] link 25=5 121=11 
+[30	] link null
+[31	] link null
+```
+  - 当容量小于64时，某个桶的长度大于8的时候无论size是否大于threshold都进行扩容。
+```
+29:34:140|INFO |main|34|size:12
+29:34:141|INFO |main|36|modCount:12
+29:34:142|INFO |main|38|threshold:24
+29:34:145|INFO |main|40|loadFactor:0.75
+29:34:146|INFO |main|43|table:32
+[0	] link 32=5 64=6 128=7 256=8 512=9 1024=10 2048=11 4096=13 
+[1	] link null
+[2	] link 2=1 
+[3	] link null
+[4	] link 4=2 
+[5	] link null..
+[7	] link null
+[8	] link 8=3 
+[9	] link null...
+[15	] link null
+[16	] link 16=4 
+[17	] link null...
+[31	] link null
+```
+5. 树化阶段
+  当容量大于等于64时候，某个桶的长度大于8，则进行树化操作。
+```
+32:03:049|INFO |main|33|size:15
+32:03:050|INFO |main|35|modCount:15
+32:03:050|INFO |main|37|threshold:48
+32:03:080|INFO |main|39|loadFactor:0.75
+32:03:081|INFO |main|42|table:64
+[0	] tree 
+512=9		
+128=7		2048=11		
+64=6		256=8		1024=10		8192=13		
+null		null		null		null		null		null		4096=12		16384=14		
+                                                                        null		null		null		null		
+[1	] link 1=0 
+[2	] link 2=1 
+[3	] link null
+[4	] link 4=2 
+[5	] link null...
+[7	] link null
+[8	] link 8=3 
+[9	] link null...
+[15	] link null
+[16	] link 16=4 
+[17	] link null...
+[31	] link null
+[32	] link 32=5 
+[33	] link null...
+[63	] link null
+```
+6. 树退化阶段
+  树的退化并不是我们像链表转为树那样，树的节点小于6就退化为链表，而是分为两种情况：
+  1. 当扩容的时候，如果树的节点小于等于`UNTREEIFY_THRESHOLD=6`则转换为链表。
+  2. 如果是操作remove删除节点的时候，树要转化为链表的的节点个数是小于等于2。
+  
 ## hashmap多线程下的问题
+- 在jdk1.7下，当并发插入元素时，由于链表操作会产生环链，当后续有操作环链上的数据时就会进入死循环，在jdk1.8及更高版本后，链表操作进行了分组拷贝，并保持了原来的链表顺序，所以就避免了死循环。
+- 在jdk1.8下，当并发插入元素时候可能会获取不到，原因是当一个线程计算好桶位的时候，而另一个线程出发了map的扩容，这样第一个线程计算的桶位放到了新的扩容后的桶中，当再次查这个key的时候就会使用新的桶长度进行取模，这样就获取不到这个元素了。
+丢失的元素复现demo源码：
+```
+    @Test
+    public void concurrentOpretor() throws Exception{
+        while (true){
+            CountDownLatch countDownLatch = new CountDownLatch(2);
+            HashMap map = new HashMap(0);// 容量设置为0，增加扩容次数
+            // 两个线程同时插入元素
+            Thread t1 = new Thread(() -> {
+                for (int i = 0; i < 1000; i++) {
+                    map.put(i*2, String.valueOf(i));
+                }
+                countDownLatch.countDown();
+            });
+            Thread t2 = new Thread(() -> {
+                for (int i = 0; i < 1000; i++) {
+                    map.put(i*3, String.valueOf(i));
+                }
+                countDownLatch.countDown();
+            });
+            t1.start();
+            t2.start();
+            countDownLatch.await();
+            // 再次获取每个元素，空则抛出异常
+            for (int i = 0; i < 1000; i++) {
+                Object o = map.get(i*2);
+                if (o==null){
+                    printMapStructure(map);
+                    log.error("key:{}",s(i*2));
+                    throw new RuntimeException();
+                }
+            }
+            for (int i = 0; i < 1000; i++) {
+                Object o =  map.get(i*3);
+                if (o==null){
+                    printMapStructure(map);
+                    log.error("key:{}",s(i*3));
+                    throw new RuntimeException();
+                }
+            }
+            TestUtil.sleep(300);
+        }
+    }
 
+```
+运行结果：
+```
+32:54:631|INFO |main|45|size:1582
+32:54:631|INFO |main|47|modCount:1580
+32:54:631|INFO |main|49|threshold:3072
+32:54:634|INFO |main|51|loadFactor:0.75
+32:54:635|INFO |main|54|table:4096
+[0	] link 0=0 
+[1	] link null...
+[22	] link 22=11 
+[23	] link null
+[24	] link 24=8 152=76 
+[25	] link null
+[26	] link 26=13 
+[27	] link 27=9...
+[4094	] link null
+[4095	] link null
+32:54:736|ERROR|main|354|index:152
+32:54:736|DEBUG|main|33|take up time:1728 ms
+Disconnected from the target VM, address: '127.0.0.1:60922', transport: 'socket'
+
+java.lang.RuntimeException
+	at demo.HashMapDemo.concurrentOpretor(HashMapDemo.java:355)
+```
+通过运行结果可以看出当前容量为4096，但是有个元素152=76 放到了桶位为24的位置，显然是错误的。我们经过hash桶位计算得出key=152的元素只有当容量为64的时候桶位为24。如果容量为4096则key=152的桶位应为152。
+另外我们也看出map的size属性和modCount也是错误的，都是因为并发时候++size和++modCount也不是原子性的。
 
 ## 其他说明
-因为这里要消化的东西不算少，所以关于红黑树的知识就单独抽出来介绍。
+因为这里要消化的东西不算少，所以关于红黑树的知识就单独抽出来介绍了。
+
 ## 参考资料
 
 - https://www.cnblogs.com/zhimingxin/p/8609545.html
 - https://www.cnblogs.com/yesiamhere/p/6675067.html
+
+> 相关源码：https://github.com/mvilplss/note

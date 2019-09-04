@@ -4,9 +4,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.junit.Test;
 import util.TestUtil;
 
-import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.util.*;
+import java.util.concurrent.CountDownLatch;
 
 /**
  * All rights Reserved, Designed By www.maihaoche.com
@@ -23,15 +23,24 @@ public class HashMapDemo extends BaseDemo {
     @Test
     public void hashMapRefectionStudy() throws Exception {
         HashMap<Integer, String> map = new HashMap<>();
-        for (int i = 0; i < 14; i++) {
-            map.put((int) Math.pow( 2, i)+3, String.valueOf(i));
+        for (int i = 0; i < 15; i++) {
+            map.put((int) Math.pow( 2, i), String.valueOf(i));
         }
+        map.remove(16384);
+        map.remove(4096);
+        map.remove(8192);
+        map.remove(1024);
+        map.remove(256);
+        map.remove(512);
+//        map.remove(128);
         // 相关class准备
+        printMapStructure(map);
+    }
+
+    // 打印map数据结构
+    private void printMapStructure(HashMap map) throws ClassNotFoundException, NoSuchFieldException, IllegalAccessException {
         Class<?> nodeClass = Class.forName("java.util.HashMap$Node");
         Class<?> treeNodeClass = Class.forName("java.util.HashMap$TreeNode");
-        // 获取table大小和相关属性
-        Object[] table = (Object[]) getFieldValue("table", map);
-        log.info("table:" + table.length);
         Object size = getFieldValue("size", map);
         log.info("size:" + size);
         Object modCount = getFieldValue("modCount", map);
@@ -40,6 +49,9 @@ public class HashMapDemo extends BaseDemo {
         log.info("threshold:" + threshold);
         Object loadFactor = getFieldValue("loadFactor", map);
         log.info("loadFactor:" + loadFactor);
+        // 获取table大小和相关属性
+        Object[] table = (Object[]) getFieldValue("table", map);
+        log.info("table:" + table.length);
         // 格式化打印数据
         for (int i = 0; i < table.length; i++) {
             Object o = table[i];
@@ -302,19 +314,55 @@ public class HashMapDemo extends BaseDemo {
     // oldCap = 32
     // [3	] link 35=5 67=6 131=7 259=8 515=9 1027=10 2051=11 4099=12
     @Test
-    public void o() throws Exception{
-        System.out.println(35&31);
-        System.out.println(67&31);
-        System.out.println(131&31);
+    public void 计算hash() throws Exception{
+        int cap = 4096;
+        int hash = hash(152);
+        int index =(cap-1)&hash;
+        log.info("index:{}",index);
+    }
+    static final int hash(Object key) {
+        int h;
+        return (key == null) ? 0 : (h = key.hashCode()) ^ (h >>> 16);
+    }
 
-        System.out.println(35&32);
-
-        System.out.println(35&63);
-        System.out.println(67&32);
-        System.out.println(131&32);
-        System.out.println(Integer.toBinaryString(32));
-        System.out.println(Integer.toBinaryString(67));
-        System.out.println(Integer.toBinaryString(131));
+    @Test
+    public void concurrentOpretor() throws Exception{
+        while (true){
+            CountDownLatch countDownLatch = new CountDownLatch(2);
+            HashMap map = new HashMap(0);
+            Thread t1 = new Thread(() -> {
+                for (int i = 0; i < 1000; i++) {
+                    map.put(i*2, String.valueOf(i));
+                }
+                countDownLatch.countDown();
+            });
+            Thread t2 = new Thread(() -> {
+                for (int i = 0; i < 1000; i++) {
+                    map.put(i*3, String.valueOf(i));
+                }
+                countDownLatch.countDown();
+            });
+            t1.start();
+            t2.start();
+            countDownLatch.await();
+            for (int i = 0; i < 1000; i++) {
+                Object o = map.get(i*2);
+                if (o==null){
+                    printMapStructure(map);
+                    log.error("key:{}",s(i*2));
+                    throw new RuntimeException();
+                }
+            }
+            for (int i = 0; i < 1000; i++) {
+                Object o =  map.get(i*3);
+                if (o==null){
+                    printMapStructure(map);
+                    log.error("key:{}",s(i*3));
+                    throw new RuntimeException();
+                }
+            }
+            TestUtil.sleep(300);
+        }
     }
 
 }
