@@ -5,6 +5,7 @@ categories:
 - 开发技术
 tags: 
 - java
+copyright: true
 ---
 ## hashmap分析前准备
 > 当前jdk版本：jdk1.8
@@ -906,9 +907,7 @@ null		null		null		null		null		null		4096=12		16384=14
         }
     }
 
-```
-运行结果：
-```
+// 运行结果：
 32:54:631|INFO |main|45|size:1582
 32:54:631|INFO |main|47|modCount:1580
 32:54:631|INFO |main|49|threshold:3072

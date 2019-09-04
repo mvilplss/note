@@ -5,6 +5,7 @@ categories:
 - 开发技术
 tags: 
 - java
+copyright: true
 ---
 
 写过规则引擎的同学都知道drools语言，我们都通过一个drools容器来加载并执行drools写的各种规则,也玩过通过Java的脚本引擎执行过Javascript代码.这些动态加载并运行代码主要是用于编写不同规则,而非在代码中写满各种ifelse判断.
