@@ -6,7 +6,7 @@ categories:
 tags: 
 - java
 ---
-## hashmap研究前准备
+## hashmap分析前准备
 > 当前jdk版本：jdk1.8
 
 为了更好的研究hashmap的数据结构，我们写了个hashmap反射函数，可以打印出当前数据存放结构可视化和各项属性参数，这样可以帮助我们展示hashmap对象的具体情况和参数，下面是源码。
