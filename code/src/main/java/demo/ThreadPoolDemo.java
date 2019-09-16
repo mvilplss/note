@@ -20,9 +20,27 @@ import static java.util.concurrent.TimeUnit.SECONDS;
  */
 @Slf4j
 public class ThreadPoolDemo extends BaseDemo {
+    
+    @Test
+    public void completionService() throws Exception{
+        ExecutorService executorService = Executors.newFixedThreadPool(10);
+        Callable callable = new Callable<String>() {
+            @Override
+            public String call() throws Exception {
+                log.info("starting");
+                TestUtil.sleep(2000);
+                log.info("ending");
+                return Thread.currentThread().getName();
+            }
+        };
+        ExecutorCompletionService executorCompletionService = new ExecutorCompletionService(executorService);
+        executorCompletionService.submit(callable);
+        FutureTask<String> stringFutureTask = new FutureTask<String>(callable);
+        log.info(s(executorCompletionService.take().get()));
+    }
 
     @Test
-    public void xxx() throws Exception{
+    public void shutDown() throws Exception{
         CountDownLatch countDownLatch = new CountDownLatch(5);
         ThreadPoolExecutor threadPool = (ThreadPoolExecutor) Executors.newFixedThreadPool(2);
         class MyRunnable implements Runnable{
@@ -52,7 +70,7 @@ public class ThreadPoolDemo extends BaseDemo {
     }
 
     @Test
-    public void timer() throws Exception{
+    public void timerIsBad() throws Exception{
         CountDownLatch countDownLatch = new CountDownLatch(2);
         Timer timer = new Timer();
         timer.schedule(new TimerTask() {
@@ -66,7 +84,8 @@ public class ThreadPoolDemo extends BaseDemo {
             @Override
             public void run() {
                 log.info("100");
-                TestUtil.sleep(10000);
+//                int i = 1/0;
+//                TestUtil.sleep(10000);
                 countDownLatch.countDown();
             }
         },100);

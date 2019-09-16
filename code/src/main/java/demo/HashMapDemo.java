@@ -325,6 +325,7 @@ public class HashMapDemo extends BaseDemo {
         return (key == null) ? 0 : (h = key.hashCode()) ^ (h >>> 16);
     }
 
+    // 放入的值获永远取不到，并发导致放错误位置
     @Test
     public void concurrentOpretor() throws Exception{
         while (true){
@@ -365,4 +366,30 @@ public class HashMapDemo extends BaseDemo {
         }
     }
 
+    // -xx:PrintCompilation 打印动态编译日志
+    // hashmap可见性
+    @Test
+    public void visibilityMap() throws Exception{
+        Map map = new HashMap();
+        map.put("foo","foo");
+        // 两个线程，一个当没有值的时候
+        CountDownLatch countDownLatch = new CountDownLatch(2);
+        Thread startEngineThread = new Thread(() -> {
+            log.info("begin");
+            while (map.size()!=0){// map有值则一直工作。
+
+            }
+            log.info("end");
+            countDownLatch.countDown();
+        });
+        Thread stopEngineThread = new Thread(() -> {
+            TestUtil.sleep(10);
+            map.remove("foo");// 移除最后一个值
+            log.info("remove a key-value ,size={}",map.size());
+            countDownLatch.countDown();
+        });
+        startEngineThread.start();
+        stopEngineThread.start();
+        countDownLatch.await();
+    }
 }
