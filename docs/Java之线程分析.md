@@ -21,6 +21,7 @@ Java线程有两个创建方式，可以通过继承Thread，重写run方法来�
 - long stackSize 线程栈期望的大小，默认0 忽略大小，可通过Xss参数配置，线程栈的大小影响递归的深度，线程栈越大递归的深度越大。栈大小默认为1024k，可以通过：-XX:+PrintFlagsFinal 打印`ThreadStackSize`。
 - AccessControlContext acc 线程的上下文访问控制 默认null
 - boolean inheritThreadLocals 是否继承ThreadLocal，默认是false，表示ThreadLocal
+
 ```
 private void init(ThreadGroup g, Runnable target, String name,
                       long stackSize, AccessControlContext acc,
@@ -142,6 +143,7 @@ targetThread:TIMED_WAITING
 targetThread:RUNNABLE
 targetThread:TERMINATED
 ```
+
 由上面例子的运行结果可以得出：当线程创建好为NEW状态，调用start后为RUNNABLE，发送同步锁竞争等待时候为BLOCKED，当进入wait(>0)/sleep时候进入TIMED_WAITING，运行结束进入TERMINATED。所有状态切换都先进入RUNNABLE。
 
 ![线程状态转换](https://github.com/mvilplss/note/blob/master/image/线程状态转换.png?raw=true)
@@ -152,6 +154,7 @@ targetThread:TERMINATED
 - Thread.interrupted();// 判断是否被阻断并清除阻断状态，将阻断状态设置为false。
 - setUncaughtExceptionHandler() 设置线程内未捕获的异常处理器。
 - join() 等待线程执行完毕
+
 ```
     public final synchronized void join(long millis)
     throws InterruptedException {
@@ -176,7 +179,9 @@ targetThread:TERMINATED
         }
     }
 ```
+
 - setDaemon() 设置为守护线程，线程启动前可以设置，默认随父线程（当前线程）；当所有非守护线程关闭后守护线程也会被jvm关闭。
+
 ```
 public final void setDaemon(boolean on) {
         checkAccess();
@@ -186,7 +191,9 @@ public final void setDaemon(boolean on) {
         daemon = on;
     }
 ```
+
 - run() 执行线程中target.run方法，如果直接调用thread.run这样会失效线程的作用，变成线程直接执行。
+
 ```
     public void run() {
         if (target != null) {
@@ -194,9 +201,11 @@ public final void setDaemon(boolean on) {
         }
     }
 ```
+
 - setPriority() 设置线程优先级，级别1-10，默认优先级随父线程（当前线程），官方不建议通过优先级来决定线程的执行顺序，因为不同平台的优先级可能不一样，也可能某些平台不支持。
 
 ### 关于线程的stackSize的研究：
+
 ```
     // -XX:+PrintFlagsFinal -XX:MaxDirectMemorySize=512
     // -XX:NativeMemoryTracking=detail -Xmx4g -Xss180k
@@ -227,6 +236,7 @@ public final void setDaemon(boolean on) {
         log.error("exp:{}", door.deepNum);
     }
 ```
+
 经过实验，发现栈的深度并不是随着stackSize增加而线性增加，而是当stackSize大于某个些值时候才会增加栈的深度。确定的是stackSize越大则栈的深度越深。
 
 ### Java虚拟机栈（Java virtual machine stack）
@@ -238,6 +248,7 @@ public final void setDaemon(boolean on) {
 ### 线程交替打印1，2，3 实现方式
 #### 使用wait和notifyAll实现
 通过同步方法对线程数取模来交替的唤醒和阻塞，设置初始值为0，第一个线程取模为0则进行打印后递增，唤醒其他线程同时阻塞自己；当另外两个线程被唤醒后启动并检测取模后的值为真则打印，递增，唤醒所有，阻塞，以此类推。
+
 ```
 @Test
     public void printOrderThread1() throws Exception {
@@ -306,6 +317,7 @@ public final void setDaemon(boolean on) {
 
 #### 借助阻塞队列的阻塞机制实现
 通过阻塞队列就比较清晰，声明三个队列，初始化第一个队列增加一个元素，当线程启动后获取当前队列的元素，如果没有则阻塞，否则打印然后放入第二个队列中一个元素，第二个线程获取元素并打印后放入第三个队列中一个元素，第三线程同样获取元素并打印，然后放入到第一个队列元素，以此类推。
+
 ```
     @Test
     public void printOrderThread2() throws Exception {
@@ -351,4 +363,5 @@ public final void setDaemon(boolean on) {
 -  Java虚拟机规范：https://docs.oracle.com/javase/specs/jvms/se8/jvms8.pdf
 
 ### 相关源码
+
 > 相关源码：https://github.com/mvilplss/note
