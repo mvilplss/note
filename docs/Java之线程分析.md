@@ -145,7 +145,6 @@ targetThread:TERMINATED
 ```
 
 由上面例子的运行结果可以得出：当线程创建好为NEW状态，调用start后为RUNNABLE，发送同步锁竞争等待时候为BLOCKED，当进入wait(>0)/sleep时候进入TIMED_WAITING，运行结束进入TERMINATED。所有状态切换都先进入RUNNABLE。
-
 ![线程状态转换](https://github.com/mvilplss/note/blob/master/image/线程状态转换.png?raw=true)
 
 ### java线程的常用方法
@@ -313,7 +312,7 @@ public final void setDaemon(boolean on) {
 
         System.in.read();
     }
-``` 
+```
 
 #### 借助阻塞队列的阻塞机制实现
 通过阻塞队列就比较清晰，声明三个队列，初始化第一个队列增加一个元素，当线程启动后获取当前队列的元素，如果没有则阻塞，否则打印然后放入第二个队列中一个元素，第二个线程获取元素并打印后放入第三个队列中一个元素，第三线程同样获取元素并打印，然后放入到第一个队列元素，以此类推。
