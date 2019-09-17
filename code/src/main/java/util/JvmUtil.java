@@ -1,9 +1,13 @@
 package util;
 
+import sun.misc.ProxyGenerator;
 import sun.misc.Unsafe;
 
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.lang.management.ManagementFactory;
 import java.lang.reflect.Field;
+import java.util.Arrays;
 
 /**
  * All rights Reserved, Designed By www.maihaoche.com
@@ -37,5 +41,29 @@ public class JvmUtil {
         }
         final long i1 = (unsafe.getLong(objects, offset) & 0xFFFFFFFFL) * 8;// 64bit=8
        return "0x0000000"+Long.toHexString(i1);
+    }
+
+    public static String saveClass(Object obj){
+        Class<?> clazz = obj.getClass();
+        Class<?>[] interfaces = clazz.getInterfaces();
+        byte[] classFile = ProxyGenerator.generateProxyClass(clazz.getName(), interfaces);
+        String path = JvmUtil.class.getResource(".").getPath();
+        FileOutputStream fos = null;
+        String f = path + clazz.getName() + ".class";
+        try {
+            fos = new FileOutputStream(f);
+            fos.write(classFile);//保存到磁盘
+            fos.flush();
+        }catch(Exception e) {
+            e.printStackTrace();
+        }finally {
+            try {
+                fos.close();
+            }catch(IOException e) {
+                e.printStackTrace();
+            }
+        }
+        return f;
+
     }
 }
