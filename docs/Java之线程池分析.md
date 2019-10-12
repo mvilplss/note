@@ -1,6 +1,6 @@
 ---
 title: Java之线程池分析
-date: 2018-01-15
+date: 2018-01-12
 categories: 
 - 开发技术
 tags: 
@@ -36,6 +36,7 @@ copyright: true
         this.handler = handler;
     }
 ```
+七个参数：
 - corePoolSize 线程池的核心线程数大小，当线程数小于这个值的时候，新任务过来会创建线程并执行任务。
 - maximumPoolSize 线程池的总线程数大小，当队列满的时候会判断线程数是否小于这个值，如果小于则进行创建线程并执行任务。
 - keepAliveTime 当超过核心线程数创建的线程空闲时间，如果超过这个时间当前线程就会执行完毕并关闭，通过获取队列超时来实现的。
@@ -69,14 +70,13 @@ copyright: true
     private static int ctlOf(int rs, int wc) { return rs | wc; }
 ```
 - RUNNING 线程池在运行中。
-- SHUTDOWN 线程池关闭状态，
-新的任务不允许加入线程池，等待剩余老的任务和队列执行完毕，shutdown()会进入此状态。
+- SHUTDOWN 线程池关闭状态，新的任务不允许加入线程池，等待剩余老的任务和队列执行完毕，shutdown()会进入此状态。
 - STOP 线程池处于停止状态，shutdownNow()会进入此状态。
 - TIDYING 当工作线程为0的时候进入此状态。
 - TERMINATED 线程池终止。
 
 ### 提交任务：
- ```
+```
      public void execute(Runnable command) {
          if (command == null)
              throw new NullPointerException();
@@ -120,10 +120,10 @@ copyright: true
          else if (!addWorker(command, false))
              reject(command);
      }
- ```
+```
  
 ### 增加工作线程和任务：
- ```
+```
      // firstTask表示当前线程的第一个任务，如果任务为空，则只增加一个线程。
      // core 表示是否是核心线程，主要是判断工作线程和核心线程或最大线程数做对比。
      private boolean addWorker(Runnable firstTask, boolean core) {
@@ -191,15 +191,13 @@ copyright: true
          }
          return workerStarted;
      }
-
- ```
+```
  
 ### 工作线程内部类：
- ```
+```
 private final class Worker
         extends AbstractQueuedSynchronizer
-        implements Runnable
-    {
+        implements Runnable{
         private static final long serialVersionUID = 6138294804551838833L;
         /** Thread this worker is running in.  Null if factory fails. */
         final Thread thread;
@@ -221,11 +219,9 @@ private final class Worker
         //
         // The value 0 represents the unlocked state.
         // The value 1 represents the locked state.
-
         protected boolean isHeldExclusively() {
             return getState() != 0;
         }
-
         protected boolean tryAcquire(int unused) {
             if (compareAndSetState(0, 1)) {
                 setExclusiveOwnerThread(Thread.currentThread());
@@ -233,18 +229,15 @@ private final class Worker
             }
             return false;
         }
-
         protected boolean tryRelease(int unused) {
             setExclusiveOwnerThread(null);
             setState(0);
             return true;
         }
-
         public void lock()        { acquire(1); }
         public boolean tryLock()  { return tryAcquire(1); }
         public void unlock()      { release(1); }
         public boolean isLocked() { return isHeldExclusively(); }
-
         void interruptIfStarted() {
             Thread t;
             if (getState() >= 0 && (t = thread) != null && !t.isInterrupted()) {
@@ -255,10 +248,10 @@ private final class Worker
             }
         }
     }
- ```
+```
  
 ### 执行任务：
- ```
+```
      final void runWorker(Worker w) {
          Thread wt = Thread.currentThread();
          Runnable task = w.firstTask;
@@ -305,7 +298,8 @@ private final class Worker
              processWorkerExit(w, completedAbruptly);
          }
      }
- ```
+```
+
 ### 清理工作线程和变更线程计数，异常结束的线程则补充一个。
 ```
     private void processWorkerExit(Worker w, boolean completedAbruptly) {

@@ -2,6 +2,8 @@ package demo;
 
 import lombok.extern.slf4j.Slf4j;
 import org.junit.Test;
+import util.JvmUtil;
+import util.TestUtil;
 
 import java.util.Arrays;
 
@@ -18,11 +20,29 @@ public class OtherDemo extends BaseDemo{
 
     @Test
     public void xxx() throws Exception{
-        String x = "https://img.maihaoche.com/e4601bb0-a8b0-43d6-82c5-227819cd1db7.jpg";
-        String[] split = x.split("#\\*#");
-       log.info(Arrays.toString(split));
-       log.info(split[0]);
+        String a = "你好";
+        System.out.println(JvmUtil.getJvmAddress("你好"));
+        System.out.println(JvmUtil.getJvmAddress(a));
+        TestUtil.sleep(100000);
     }
 
+    @Test
+    public void string() throws Exception{
+        String a =new String( "abc").intern();
+        String b = "a"+"b"+"c";
+        String c = b.intern();
+
+        System.out.println(a==b);
+        System.out.println(a==c);
+        System.out.println(b==c);
+        System.out.println(JvmUtil.getJvmAddress(a));
+        System.out.println(JvmUtil.getJvmAddress(b));
+        System.out.println(JvmUtil.getJvmAddress(c));
+    }
+
+    @Test
+    public void xxxx() throws Exception{
+        System.out.println("hello lll");
+    }
 
 }

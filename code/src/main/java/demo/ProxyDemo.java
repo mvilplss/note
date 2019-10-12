@@ -24,7 +24,7 @@ public class ProxyDemo extends BaseDemo {
         System.setProperty("sun.misc.ProxyGenerator.saveGeneratedFiles", "true");// 当前项目com/sun/proxy
         JdkInvocationHandler jdkProxy = new JdkInvocationHandler(new Computer());
         long begin = System.currentTimeMillis();
-        ComputerIntf instance = (ComputerIntf) Proxy.newProxyInstance(Thread.currentThread().getContextClassLoader(), Computer.class.getInterfaces(), jdkProxy);
+        ComputerIntf instance = (ComputerIntf) Proxy.newProxyInstance(null, Computer.class.getInterfaces(), jdkProxy);
         for (int i = 0; i < 1; i++) {
             instance.add(i);
         }
@@ -36,7 +36,7 @@ public class ProxyDemo extends BaseDemo {
     @Test
     public void cglibProxy() throws Exception {
         System.setProperty(DebuggingClassWriter.DEBUG_LOCATION_PROPERTY, "file/proxy");
-        Computer instance = (Computer) CglibMethodInterceptor.getProxyInstance(Computer.class);
+        PcBook instance = (PcBook) CglibMethodInterceptor.getProxyInstance(JdkInvocationHandler.class);
         long begin = System.currentTimeMillis();
         for (int i = 0; i < 1; i++) {
             instance.add(i);
