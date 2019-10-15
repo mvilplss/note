@@ -22,6 +22,12 @@ import java.nio.file.Paths;
  */
 @Slf4j
 public class ClassLoaderDemo extends BaseDemo {
+    // 破坏双亲委派场景
+    @Test
+    public void breakDelegates() throws Exception{
+        // 双亲委派是什么
+        // spi机制加载jdbc驱动利用tccl实现加载类，破坏双亲委派。
+    }
 
     @Test
     public void javaClassLoader() throws Exception {
