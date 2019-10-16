@@ -11,6 +11,9 @@ import java.net.URL;
 import java.net.URLClassLoader;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.sql.CallableStatement;
+import java.sql.Connection;
+import java.sql.DriverManager;
 
 /**
  * All rights Reserved, Designed By www.maihaoche.com
@@ -27,6 +30,10 @@ public class ClassLoaderDemo extends BaseDemo {
     public void breakDelegates() throws Exception{
         // 双亲委派是什么
         // spi机制加载jdbc驱动利用tccl实现加载类，破坏双亲委派。
+        Connection connection = DriverManager.getConnection("jdbc:mysql://localhost:3306?characterencoding=utf-8", "root", "123456");
+        System.out.println(connection);
+        CallableStatement show_databases = connection.prepareCall("show databases");
+        System.out.println(show_databases);
     }
 
     @Test
