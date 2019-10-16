@@ -248,6 +248,8 @@ URLClassLoader的构造器源码:
 
 1.binary name是什么?
 就是我们的类的全名如:com.lang.Integer
+2.什么是破坏双亲委派机制？
+通过TCCL(ThreadContextClassLoader)来实现上级加载器加载的类中通过非当前加载器加载子类时候破坏了双亲委派机制，如jdk的spi机制，典型的就是jdbc的Driver实现类的自动加载。Driver和DriverManager接口是BootStrap加载器加载的，但是实现类是通过DriverManager通过TCCL方式加载的。
 
 
 
