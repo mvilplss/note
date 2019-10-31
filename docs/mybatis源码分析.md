@@ -638,6 +638,8 @@ MapperMethod执行映射方法
 mybatis整理架构
 ![](https://github.com/mvilplss/note/blob/master/image/mybatis架构.jpeg?raw=true)
 
+mybatis时序图
+![](https://github.com/mvilplss/note/blob/master/image/mybatis架构.jpeg?raw=true)
 
 
 ## 待完善
