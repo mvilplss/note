@@ -1,14 +1,24 @@
 ---
-title: Mysql之事务和锁
-date: 2018-12-04
+title: Git常见命令底层原理及实践经验
+date: 2017-12-03
 categories: 
 - 开发技术
 tags: 
-- mysql
+- 开发工具
 copyright: true
 ---
 
 // TODO
-cc_car_loan由于数据重复，顺序不一致，通过多线程更新操作，导致死锁。
-起因：
-死锁的排查：
+## git和svn有什么不同？
+
+## git的常见命令
+
+## git的底层原理浅析
+
+## 什么是gitflow
+
+## 其他功能
+### issue的用法
+
+### readme中的图标怎么设置？
+
