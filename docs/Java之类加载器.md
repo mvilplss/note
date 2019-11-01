@@ -179,7 +179,7 @@ URLClassLoader的构造器源码:
 ```
 这样当调用当前对象的`findClass`方法时候,使用的`ucp`对象就是当前对象创建时候创建的`ucp`.
 简单调用流程如下:
-![类加载的简单流程,丑见谅!](https://github.com/mvilplss/note/blob/master/image/类加载器加载流程.png?raw=true)
+![类加载的简单流程,丑见谅!](https://gitee.com/mvilplss/note/raw/master/image/类加载器加载流程.png)
 
 ## 写一个自定义加载器
 

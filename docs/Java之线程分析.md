@@ -145,7 +145,7 @@ targetThread:TERMINATED
 ```
 
 由上面例子的运行结果可以得出：当线程创建好为NEW状态，调用start后为RUNNABLE，发送同步锁竞争等待时候为BLOCKED，当进入wait(>0)/sleep时候进入TIMED_WAITING，运行结束进入TERMINATED。所有状态切换都先进入RUNNABLE。
-![线程状态转换](https://github.com/mvilplss/note/blob/master/image/线程状态转换.png?raw=true)
+![线程状态转换](https://gitee.com/mvilplss/note/raw/master/image/线程状态转换.png)
 
 ### java线程的常用方法
 - interrupt() 发起阻断请求，当线程正在处于WAITING，TIMED_WAITING状态时候，将会进入RUNNABLE状态并收到InterruptedException异常。
@@ -242,7 +242,7 @@ public final void setDaemon(boolean on) {
 关于jvm的运行时数据区中和线程紧密相关的就是Java虚拟机栈，每一条Java线程都有一个私有的虚拟机栈，这个栈与线程同时创建，用于存储栈帧。栈帧是用来存储数据和部分过程结果的数据结构，随着方法的调用而创建，随着方法的结束而销毁。
 - 当线程请求分配的栈容量超过Java虚拟机允许的最大容量，Java虚拟机会抛出一个StackOverFlowError异常。
 - 当创建线程过多，新的线程无法申请到足够的内存的时候，Java虚拟机会抛出一个OutOfMemoryError异常。
-![线程栈帧结构](https://github.com/mvilplss/note/blob/master/image/线程栈帧结构.png?raw=true)
+![线程栈帧结构](https://gitee.com/mvilplss/note/raw/master/image/线程栈帧结构.png)
 
 ### 线程交替打印1，2，3 实现方式
 #### 使用wait和notifyAll实现

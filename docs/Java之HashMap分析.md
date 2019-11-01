@@ -170,7 +170,7 @@ static final class TreeNode<K,V> extends LinkedHashMap.Entry<K,V> {
 }
 ```
 
-![丑见谅!](https://github.com/mvilplss/note/blob/master/image/hashmap结构.png?raw=true)
+![丑见谅!](https://gitee.com/mvilplss/note/raw/master/image/hashmap结构.png)
 
 说完结构，我们看些hashmap的一些重要常量和成员变量：
 *六个常量*：
