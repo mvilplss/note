@@ -9,7 +9,7 @@
         <result column="name" property="name"/>
     </resultMap>
 
-    <select id="selectById" resultMap="BaseResultMap" flushCache="true">
-    select * from tb_user where id = #{id}
+    <select id="selectAll" resultMap="BaseResultMap">
+    select * from tb_user
   </select>
 </mapper>

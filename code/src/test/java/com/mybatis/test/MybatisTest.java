@@ -6,12 +6,14 @@ import org.apache.ibatis.io.Resources;
 import org.apache.ibatis.session.SqlSession;
 import org.apache.ibatis.session.SqlSessionFactory;
 import org.apache.ibatis.session.SqlSessionFactoryBuilder;
-import org.apache.ibatis.session.SqlSessionManager;
-import org.apache.ibatis.session.defaults.DefaultSqlSession;
-import org.apache.ibatis.session.defaults.DefaultSqlSessionFactory;
 import org.junit.Test;
 
 import java.io.InputStream;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -25,16 +27,33 @@ import java.util.List;
 public class MybatisTest {
 
     @Test
+    public void jdbcTest() throws Exception{
+        Connection connection = DriverManager.getConnection("jdbc:mysql://localhost:3306/test_db", "root", "root");
+        PreparedStatement statement = connection.prepareStatement("select * from tb_user");
+        statement.execute();
+        ResultSet resultSet = statement.getResultSet();
+        List<User> users = new ArrayList<>();
+        while (resultSet.next()){
+            Object id = resultSet.getObject("id");
+            Object name = resultSet.getObject("name");
+            User user = new User();
+            user.setId(Long.valueOf(id.toString()));
+            user.setName(name.toString());
+            users.add(user);
+        }
+        System.out.println(users);
+        resultSet.close();
+        statement.close();
+        connection.close();
+    }
+
+    @Test
     public void mybatisTest() throws Exception{
         InputStream inputStream = Resources.getResourceAsStream("mybatis/mybatis-config.xml");
-        DefaultSqlSessionFactory sqlSessionFactory = (DefaultSqlSessionFactory) new SqlSessionFactoryBuilder().build(inputStream);
-        DefaultSqlSession sqlSession = (DefaultSqlSession) sqlSessionFactory.openSession();
+        SqlSessionFactory sqlSessionFactory =  new SqlSessionFactoryBuilder().build(inputStream);
+        SqlSession sqlSession = sqlSessionFactory.openSession();
         UserMapper userMapper = sqlSession.getMapper(UserMapper.class);
-        System.out.println(userMapper.selectAll());
-        User user = new User();
-        user.setId(2L);
-        user.setName("bb");
-        userMapper.updateById(user);
-        System.out.println(userMapper.selectAll());
+        List<User> users = userMapper.selectAll();
+        System.out.println(users);
     }
 }

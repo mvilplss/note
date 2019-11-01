@@ -1,8 +1,5 @@
 package com.mybatis.demo;
 
-import org.apache.ibatis.annotations.Select;
-import org.apache.ibatis.annotations.Update;
-
 import java.util.List;
 
 /**
@@ -15,12 +12,6 @@ import java.util.List;
  */
 public interface UserMapper {
 
-    @Select("select * from tb_user")
     List<User> selectAll();
-
-    User selectById(Long id);
-
-    @Update("update tb_user set name=#{name} where id = #{id}")
-    int updateById(User user);
 
 }
