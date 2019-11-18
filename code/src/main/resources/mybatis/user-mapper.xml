@@ -3,7 +3,12 @@
         PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.mybatis.demo.UserMapper">
-
+    <!--<cache type="com.mybatis.cache.RedisCache">-->
+        <!--<property name="host" value="localhost"/>-->
+        <!--<property name="port" value="6379"/>-->
+        <!--<property name="password" value="111111"/>-->
+    <!--</cache>-->
+    <cache/>
     <resultMap id="BaseResultMap" type="com.mybatis.demo.User">
         <result column="id" property="id"/>
         <result column="name" property="name"/>
@@ -12,4 +17,10 @@
     <select id="selectAll" resultMap="BaseResultMap">
     select * from tb_user
   </select>
+
+    <select id="selectById" resultMap="BaseResultMap">
+    select * from tb_user where id = #{id}
+  </select>
+
+
 </mapper>

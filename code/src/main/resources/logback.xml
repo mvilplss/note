@@ -4,7 +4,7 @@
         <root level="debug">
             <appender class="ch.qos.logback.core.ConsoleAppender">
                 <encoder>
-                    <pattern>%yellow(%date{mm:ss:SSS})|%highlight(%-5level)|%highlight(%thread)|%highlight(%line)|%highlight(%msg%n)</pattern>
+                    <pattern>%yellow(%date{mm:ss:SSS})|%highlight(%-5level)|%highlight(%thread)|%highlight(%F)#%highlight(%method)|%highlight(%line)|%highlight(%msg%n)</pattern>
                 </encoder>
             </appender>
         </root>

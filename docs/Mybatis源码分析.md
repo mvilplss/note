@@ -1,10 +1,10 @@
 ---
-title: mybatis源码分析
+title: Mybatis源码分析
 date: 2019-01-04
 categories: 
 - 开发技术
 tags: 
-- mybatis
+- Mybatis
 copyright: true
 cover: https://gitee.com/mvilplss/note/raw/master/image/mybatis架构.jpeg
 ---

@@ -52,8 +52,8 @@ public class MybatisTest {
         InputStream inputStream = Resources.getResourceAsStream("mybatis/mybatis-config.xml");
         SqlSessionFactory sqlSessionFactory =  new SqlSessionFactoryBuilder().build(inputStream);
         SqlSession sqlSession = sqlSessionFactory.openSession();
-        UserMapper userMapper = sqlSession.getMapper(UserMapper.class);
-        List<User> users = userMapper.selectAll();
-        System.out.println(users);
+        System.out.println(sqlSession.getMapper(UserMapper.class).selectById(1L));
+        sqlSession.close();
+        System.out.println(sqlSessionFactory.openSession().getMapper(UserMapper.class).selectById(1L));
     }
 }

@@ -3,6 +3,8 @@ package com.mybatis.demo;
 import lombok.Data;
 import lombok.ToString;
 
+import java.io.Serializable;
+
 /**
  * All rights Reserved, Designed By www.maihaoche.com
  *
@@ -13,7 +15,7 @@ import lombok.ToString;
  */
 @Data
 @ToString
-public class User {
+public class User implements Serializable {
     private Long id;
 
     private String name;
