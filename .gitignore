@@ -78,3 +78,6 @@ fabric.properties
 
 /code/file/*
 /code/target/*
+*.DS_Store
+I.iml
+
