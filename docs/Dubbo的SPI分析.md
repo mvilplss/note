@@ -742,7 +742,7 @@ ProviderAccLogFilter...
     - 判断是否配置组或组相同&&未指定此扩展名称&&不是开头"-"&&url中包含此扩展指定的key名称
     - 然后加载服务条件的扩展点
 5. 然后在加载指定名称的扩展点
-7. 最后合并所有扩展点，然后返回扩展点集合
+6. 最后合并所有扩展点，然后返回扩展点集合
 
 ## 参考文献
 http://dubbo.apache.org/zh/docs/v2.7/dev/source/adaptive-extension/
