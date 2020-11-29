@@ -7,12 +7,12 @@ tags:
 - java
 - dubbo
 copyright: true
-cover: https://gitee.com/mvilplss/note/raw/master/image/dubbo1.png.png
+cover: https://raw.githubusercontent.com/mvilplss/note/master/image/dubbo1.png
 ---
 ## Dubbo是什么？
 Apache Dubbo是一款高性能、轻量级的开源服务框架。
 ## 开发团队
-![](https://gitee.com/mvilplss/note/raw/master/image/dubbo1.png.png)
+![](https://raw.githubusercontent.com/mvilplss/note/master/image/dubbo1.png)
 ## Dubbo有哪些核心能力
 ### 面向接口代理的高性能RPC调用
 提供高性能的基于代理的远程调用能力，服务以接口为粒度，为开发者屏蔽远程调用底层细节。
@@ -33,7 +33,7 @@ Apache Dubbo是一款高性能、轻量级的开源服务框架。
 提供丰富服务治理、运维工具：随时查询服务元数据、服务健康状态及调用统计，实时下发路由策略、调整配置参数。
 
 ## dubbo的框架设计
-![](../image/Dubbo的简介_images/7a9403f0.png)
+![](https://raw.githubusercontent.com/mvilplss/note/master/image/.Dubbo的简介_images/7a9403f0.png)
 ### 各层说明 
 - config 配置层：对外配置接口，以 ServiceConfig, ReferenceConfig 为中心，可以直接初始化配置类，也可以通过 spring 解析配置生成配置类
 - proxy 服务代理层：服务接口透明代理，生成服务的客户端 Stub 和服务器端 Skeleton, 以 ServiceProxy 为中心，扩展接口为 ProxyFactory
@@ -45,8 +45,8 @@ Apache Dubbo是一款高性能、轻量级的开源服务框架。
 - transport 网络传输层：抽象 mina 和 netty 为统一接口，以 Message 为中心，扩展接口为 Channel, Transporter, Client, Server, Codec
 - serialize 数据序列化层：可复用的一些工具，扩展接口为 Serialization, ObjectInput, ObjectOutput, ThreadPool
 ### 模块依赖关系
-![](../image/.Dubbo的简介_images/4eb8663e.png)
+![](https://raw.githubusercontent.com/mvilplss/note/master/image/.Dubbo的简介_images/4eb8663e.png)
 ### 调用链
-![](../image/.Dubbo的简介_images/6f2cc26e.png)
+![](https://raw.githubusercontent.com/mvilplss/note/master/image/.Dubbo的简介_images/6f2cc26e.png)
 ## 参考文献
 - http://dubbo.apache.org/zh/docs/v2.7/dev/design/
