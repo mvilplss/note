@@ -549,6 +549,7 @@ public class CatHooWrapper implements AnimalHoo{
         } catch (Throwable t) {}
     }
 ```
+
 #### 包装类的调用过程
 1. 同样先调用ExtensionLoader.getExtensionLoader获取扩展加载器，先尝试在缓存中获取，否则进行new一个对象并缓存起来
 2. 调用getExtension获取扩展对象，先尝试从缓存获取，否则创建一个扩展对象
