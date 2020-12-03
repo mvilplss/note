@@ -394,6 +394,7 @@ ProtocolFilterWrapper.export() 》ProtocolListenerWrapper.export() 》 DubboProt
 ```
 每个调用链的大致源码如下，通过next链接下一个，调用者调用invoker传入下一个调用者next：
 ```java
+// Invoker在FilterChainMaker中的匿名类
 public class FilterChainMaker_1 implements Invoker {
     final InvokerFilter filter;
     final Invoker next;

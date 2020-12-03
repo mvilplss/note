@@ -73,3 +73,12 @@ ERROR Deployer not found: git
 ```
 npm install hexo-deployer-git --save
 ```
+## 增加标题数字
+```yaml
+heading_index:
+  enable: true
+  index_styles: "{1} {1} {1} {1} {1} {1}"
+  connector: "."
+  global_prefix: ""
+  global_suffix: ". "
+```
