@@ -173,6 +173,7 @@ public class DubboSpiTest {
                         if (wrapper == null
                                 || (ArrayUtils.contains(wrapper.matches(), name) && !ArrayUtils.contains(wrapper.mismatches(), name))) {
                             // 如果是包装类，则对包装类进行注入此扩展对象，然后返回包装类对象
+                            // 多个包装对象根据排序从小到大成为一个调用链
                             instance = injectExtension((T) wrapperClass.getConstructor(type).newInstance(instance));
                         }
                     }
@@ -305,7 +306,7 @@ public class DubboSpiTest {
             }
         }
 
-    // 扩展对象的注入
+    // 扩展对象注入自适应属性或spring的bean
     private T injectExtension(T instance) {
         if (objectFactory == null) {
             return instance;
@@ -559,7 +560,7 @@ public class CatHooWrapper implements AnimalHoo{
     - 然后在对每个class根据注解和构造方法进行分别缓存到自适应类缓存（类上@Adaptive）、自动激活类缓存、普通扩展类缓存，包装类（根据构造函数判断）缓存
 4. 判断是加载包装类wrap=true
     - 判断缓存中（cachedWrapperClasses）是否有包装类
-    - 对包装类进行倒叙排序，然后循环通过构造函数注入扩展对象并实例化包装类
+    - 对包装类进行倒叙排序，然后循环通过构造函数注入扩展对象并实例化包装类，多个包装类形成调用链，返回最小的排序
 5. 再根据扩展类是否实现了Lifecycle接口来调用initialize方法进行自定义初始化
 7. 最后设置对象到holder缓存并返回自适应扩展代理对象
 > dubbo使用包装类的有ProtocolFilterWrapper（生成过滤器调用链）和ProtocolListenerWrapper。
@@ -707,6 +708,7 @@ ProviderAccLogFilter...
                     activateExtensions.add(getExtension(name));// 加载扩展点
                 }
             }
+            // 做正序排序，比如多个自动激活过滤器，先后执行就是此处控制的
             activateExtensions.sort(ActivateComparator.COMPARATOR);
         }
         List<T> loadedExtensions = new ArrayList<>();
