@@ -409,7 +409,155 @@ public class FilterChainMaker_1 implements Invoker {
     }
 }
 ```
-#### 服务的暴露
+#### 绑定服务
+打开和创建一个服务：
+```java
+    private void openServer(URL url) {
+        String key = url.getAddress();// org.apache.dubbo.demo.DemoService:20880
+        boolean isServer = url.getParameter(IS_SERVER_KEY, true);
+        if (isServer) {
+            ProtocolServer server = serverMap.get(key);
+            if (server == null) {
+                synchronized (this) {
+                    // 防止重复绑定
+                    server = serverMap.get(key);
+                    if (server == null) {
+                        // 创建一个服务
+                        serverMap.put(key, createServer(url));
+                    }
+                }
+            } else {
+                server.reset(url);
+            }
+        }
+    }
+
+    private ProtocolServer createServer(URL url) {
+        // 完善url，设置必要参数
+        url = URLBuilder.from(url)
+                .addParameterIfAbsent(CHANNEL_READONLYEVENT_SENT_KEY, Boolean.TRUE.toString())
+                .addParameterIfAbsent(HEARTBEAT_KEY, String.valueOf(DEFAULT_HEARTBEAT))
+                .addParameter(CODEC_KEY, DubboCodec.NAME)
+                .build();
+        String str = url.getParameter(SERVER_KEY, DEFAULT_REMOTING_SERVER);// 默认netty
+        ExchangeServer server;
+        try {
+            // 绑定服务
+            server = Exchangers.bind(url, requestHandler);
+        } catch (RemotingException e) {}
+        return new DubboProtocolServer(server);
+    }
+```
+`Exchangers.bind(url, requestHandler)`，将服务绑定到某个网络服务上。
+```java
+    // Exchangers
+    public static ExchangeServer bind(URL url, ExchangeHandler handler) throws RemotingException {
+        if (url == null) {
+            throw new IllegalArgumentException("url == null");
+        }
+        if (handler == null) {
+            throw new IllegalArgumentException("handler == null");
+        }
+        url = url.addParameterIfAbsent(Constants.CODEC_KEY, "exchange");
+        return getExchanger(url).bind(url, handler);
+    }
+   public static Exchanger getExchanger(URL url) {
+        // 交换器是header（头部交换器，协议在头部），返回HeaderExchanger
+        String type = url.getParameter(Constants.EXCHANGER_KEY, Constants.DEFAULT_EXCHANGER);
+        return getExchanger(type);
+    }
+    //HeaderExchanger.bind();
+    @Override
+    public ExchangeServer bind(URL url, ExchangeHandler handler) throws RemotingException {
+        // 创建头部交换处理器
+        HeaderExchangeHandler headerExchangeHandler = new HeaderExchangeHandler(handler);
+        // 解码处理器
+        DecodeHandler decodeHandler = new DecodeHandler(headerExchangeHandler);
+        // 解码器绑定到网络传输器上
+        RemotingServer remotingServer = Transporters.bind(url, decodeHandler);
+        // 创建交换服务，并将远程服务注入
+        HeaderExchangeServer headerExchangeServer = new HeaderExchangeServer(remotingServer);
+        return headerExchangeServer;
+    }
+```
+`Transporters.bind(url, decodeHandler)`，绑定地址和解码器到某个网络服务上。
+```java
+    public static RemotingServer bind(URL url, ChannelHandler... handlers) throws RemotingException {
+        if (url == null) {
+            throw new IllegalArgumentException("url == null");
+        }
+        if (handlers == null || handlers.length == 0) {
+            throw new IllegalArgumentException("handlers == null");
+        }
+        ChannelHandler handler;
+        if (handlers.length == 1) {
+            handler = handlers[0];
+        } else {
+            handler = new ChannelHandlerDispatcher(handlers);
+        }
+        // 获取网络传输器，绑定地址和解码器
+        return getTransporter().bind(url, handler);
+    }
+    // 获取网络传输器自动适应扩展，根据url上的Server_key=netty可知为：NettyServer
+    public static Transporter getTransporter() {
+        return ExtensionLoader.getExtensionLoader(Transporter.class).getAdaptiveExtension();
+    }
+    // NettyServer
+    @Override
+    public RemotingServer bind(URL url, ChannelHandler handler) throws RemotingException {
+        return new NettyServer(url, handler);
+    }
+    // NettyServer.super
+    public AbstractServer(URL url, ChannelHandler handler) throws RemotingException {
+        super(url, handler);
+        localAddress = getUrl().toInetSocketAddress();
+        String bindIp = getUrl().getParameter(Constants.BIND_IP_KEY, getUrl().getHost());
+        int bindPort = getUrl().getParameter(Constants.BIND_PORT_KEY, getUrl().getPort());
+        if (url.getParameter(ANYHOST_KEY, false) || NetUtils.isInvalidLocalHost(bindIp)) {
+            bindIp = ANYHOST_VALUE;
+        }
+        bindAddress = new InetSocketAddress(bindIp, bindPort);
+        this.accepts = url.getParameter(ACCEPTS_KEY, DEFAULT_ACCEPTS);
+        this.idleTimeout = url.getParameter(IDLE_TIMEOUT_KEY, DEFAULT_IDLE_TIMEOUT);
+        try {
+            // 开启网络服务
+            doOpen();
+        } catch (Throwable t) {
+        }
+        executor = executorRepository.createExecutorIfAbsent(url);
+    }
+```
+此处的逻辑就是把服务的处理器绑定到某个网络端口上：
+```java
+    @Override
+    protected void doOpen() throws Throwable {
+        NettyHelper.setNettyLoggerFactory();
+        ExecutorService boss = Executors.newCachedThreadPool(new NamedThreadFactory("NettyServerBoss", true));
+        ExecutorService worker = Executors.newCachedThreadPool(new NamedThreadFactory("NettyServerWorker", true));
+        ChannelFactory channelFactory = new NioServerSocketChannelFactory(boss, worker, getUrl().getPositiveParameter(IO_THREADS_KEY, Constants.DEFAULT_IO_THREADS));
+        bootstrap = new ServerBootstrap(channelFactory);
+        final NettyHandler nettyHandler = new NettyHandler(getUrl(), this);
+        channels = nettyHandler.getChannels();
+        bootstrap.setOption("child.tcpNoDelay", true);
+        bootstrap.setOption("backlog", getUrl().getPositiveParameter(BACKLOG_KEY, Constants.DEFAULT_BACKLOG));
+        bootstrap.setPipelineFactory(new ChannelPipelineFactory() {
+            // 设置通道的rpc解码，编码，和处理器
+            @Override
+            public ChannelPipeline getPipeline() {
+                NettyCodecAdapter adapter = new NettyCodecAdapter(getCodec(), getUrl(), NettyServer.this);
+                ChannelPipeline pipeline = Channels.pipeline();
+                pipeline.addLast("decoder", adapter.getDecoder());
+                pipeline.addLast("encoder", adapter.getEncoder());
+                pipeline.addLast("handler", nettyHandler);
+                return pipeline;
+            }
+        });
+        // netty服务绑定到某个端口上
+        channel = bootstrap.bind(getBindAddress());
+    }
+```
+到此，服务已经绑定到某个网络传输服务的端口上。下面将介绍服务是如何注册到某个注册中心的。
+#### 服务的注册
 在上面服务导出后，需要注册到注册中心，注册方式如下，我们以zookeeper为例：
 ```java
     // RegistryProtocol
@@ -507,7 +655,7 @@ ListenerRegistryWrapper的register为的是注册后通知注册监听器。
         }
     }
 ```
-#### 服务暴露后逻辑
+#### 服务注册后逻辑
 通知注册协议监听器：
 ```java
     // RegistryProtocol
@@ -551,12 +699,12 @@ ListenerRegistryWrapper的register为的是注册后通知注册监听器。
         });
     }
 ```
-到这里整个服务的导出和暴露就结束了。
+到这里整个服务的导出和注册就结束了。
 #### 大致的流程总结
 1. 获取和组装配置参数，并将参数组装为要导出的服务URL和协议URL
 2. 根据注册中心的Url的协议register://，获取RegistryProtocol扩展点，连接注册中心
 3. 再次根据服务的Url的协议dubbo://,获取DubboProtocol扩展点，然后将服务绑定到netty服务上完成服务导出
-4. 根据注册中心的客户端在zookeeper中创建服务节点，完成服务暴露
+4. 根据注册中心的客户端在zookeeper中创建服务节点，完成服务注册
 
 ## 参考文献
 http://dubbo.apache.org/zh/docs/v2.7/dev/source/export-service/
