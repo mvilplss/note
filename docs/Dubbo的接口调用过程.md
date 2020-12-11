@@ -533,7 +533,7 @@ public class DubboInvoker<T> extends AbstractInvoker<T> {
                 // 单向立即返回空结果
                 return AsyncRpcResult.newDefaultAsyncResult(invocation);
             } else {
-                // 获取业务线程池执行器
+                // 获取业务线程池执行器，此处获取的是ThreadLessExecutor，内部包装了一个默认是cached线程池和自己内部的一个阻塞队列，主要是为了实现异步转同步调用
                 ExecutorService executor = getCallbackExecutor(getUrl(), inv);
                 // 最终由交换器（ReferenceCountExchangeClient为起点逐步执行）发起请求
                 CompletableFuture<Object> request = currentClient.request(inv, timeout, executor);
@@ -1218,9 +1218,703 @@ public class DefaultFuture extends CompletableFuture<Object> {
     }
 }
 ```
+消费端调用流程如下：
+![](https://raw.githubusercontent.com/mvilplss/note/master/image/.Dubbo的接口调用过程_images/invokercustomer.png)
 至此响应结果获取完毕，经过过滤器逐步回到调用层InvokerInvocationHandler,然后返回到代理对象proxy0到业务层，客户端整个调用过程比较复杂，要有耐心，了解消费端调用和获取响应结果的过程后，我们分析服务端对调用的处理就会轻松很多。
 趁着还有感觉，下面我们就直接分析服务端收到请求后的一系列操作过程。
 # 服务端处理请求
-## 请求的接收
+## 接收和解码请求
+我们在分析消费者调用过程时候就说过，netty的发送和接收数据后首先会进入编码器和解码器，而服务端接收请求后首先会进入解码器进行解码：
+```java
+    // NettyCodecAdapter$InternalDecoder 执行decode
+    private class InternalDecoder extends ByteToMessageDecoder {
+        @Override
+        protected void decode(ChannelHandlerContext ctx, ByteBuf input, List<Object> out) throws Exception {
+            ChannelBuffer message = new NettyBackedChannelBuffer(input);
+            NettyChannel channel = NettyChannel.getOrAddChannel(ctx.channel(), url, handler);
+            // decode object.
+            do {
+                int saveReaderIndex = message.readerIndex();
+                // codec为DubboCountCodec
+                Object msg = codec.decode(channel, message);
+                if (msg == Codec2.DecodeResult.NEED_MORE_INPUT) {
+                    message.readerIndex(saveReaderIndex);
+                    break;
+                } else {
+                    //is it possible to go here ?
+                    if (saveReaderIndex == message.readerIndex()) {
+                        throw new IOException("Decode without read data.");
+                    }
+                    if (msg != null) {
+                        out.add(msg);
+                    }
+                }
+            } while (message.readable());
+        }
+    }
+    // DubboCountCodec尝试对多个消息进行收集到MultiMessage中
+    public Object decode(Channel channel, ChannelBuffer buffer) throws IOException {
+        int save = buffer.readerIndex();
+        MultiMessage result = MultiMessage.create();
+        do {
+            Object obj = codec.decode(channel, buffer);
+            if (Codec2.DecodeResult.NEED_MORE_INPUT == obj) {
+                buffer.readerIndex(save);
+                break;
+            } else {
+                result.addMessage(obj);
+                logMessageLength(obj, buffer.readerIndex() - save);
+                save = buffer.readerIndex();
+            }
+        } while (true);
+        if (result.isEmpty()) {
+            return Codec2.DecodeResult.NEED_MORE_INPUT;
+        }
+        if (result.size() == 1) {
+            return result.get(0);
+        }
+        return result;
+    }
+```
+最后交给DubboCodec进一步解码，解码方式在消费者调用时我们简单分析过：
+```java
+    public Object decode(Channel channel, ChannelBuffer buffer) throws IOException {
+        int readable = buffer.readableBytes();
+        byte[] header = new byte[Math.min(readable, HEADER_LENGTH)];
+        buffer.readBytes(header);
+        return decode(channel, buffer, readable, header);
+    }
+
+    @Override
+    protected Object decode(Channel channel, ChannelBuffer buffer, int readable, byte[] header) throws IOException {
+        // check magic number.
+        if (readable > 0 && header[0] != MAGIC_HIGH
+                || readable > 1 && header[1] != MAGIC_LOW) {
+            int length = header.length;
+            if (header.length < readable) {
+                header = Bytes.copyOf(header, readable);
+                buffer.readBytes(header, length, readable - length);
+            }
+            for (int i = 1; i < header.length - 1; i++) {
+                if (header[i] == MAGIC_HIGH && header[i + 1] == MAGIC_LOW) {
+                    buffer.readerIndex(buffer.readerIndex() - header.length + i);
+                    header = Bytes.copyOf(header, i);
+                    break;
+                }
+            }
+            return super.decode(channel, buffer, readable, header);
+        }
+        // check length.
+        if (readable < HEADER_LENGTH) {
+            return DecodeResult.NEED_MORE_INPUT;
+        }
+        // get data length.
+        int len = Bytes.bytes2int(header, 12);
+        checkPayload(channel, len);// 检测长度，默认是8M，可以通过payload设置。
+        int tt = len + HEADER_LENGTH;
+        if (readable < tt) {
+            return DecodeResult.NEED_MORE_INPUT;
+        }
+        // limit input stream. 读取固定长度的数据
+        ChannelBufferInputStream is = new ChannelBufferInputStream(buffer, len);
+        try {
+            return decodeBody(channel, is, header);
+        } finally {
+        }
+    }
+    // 对body进行解码
+    protected Object decodeBody(Channel channel, InputStream is, byte[] header) throws IOException {
+        byte flag = header[2], proto = (byte) (flag & SERIALIZATION_MASK);
+        // get request id.
+        long id = Bytes.bytes2long(header, 4);
+        if ((flag & FLAG_REQUEST) == 0) { // 此时flag=-62，进入Request解析
+            // decode response.
+            // 在消费者调用中我们分析过，这里省略了。
+            return res;
+        } else {
+            // decode request.
+            Request req = new Request(id);
+            req.setVersion(Version.getProtocolVersion());
+            req.setTwoWay((flag & FLAG_TWOWAY) != 0);
+            if ((flag & FLAG_EVENT) != 0) {
+                req.setEvent(true);
+            }
+            try {
+                Object data;
+                if (req.isEvent()) {
+                    ObjectInput in = CodecSupport.deserialize(channel.getUrl(), is, proto);
+                    data = decodeEventData(channel, in);
+                } else {
+                    DecodeableRpcInvocation inv;
+                    // 同样判断是否反序列化要放在io线程，默认是false
+                    if (channel.getUrl().getParameter(DECODE_IN_IO_THREAD_KEY, DEFAULT_DECODE_IN_IO_THREAD)) {
+                        inv = new DecodeableRpcInvocation(channel, req, is, proto);
+                        inv.decode();
+                    } else {
+                        // 最终会封装为可解码的DecodeableRpcInvocation对象
+                        inv = new DecodeableRpcInvocation(channel, req,
+                                new UnsafeByteArrayInputStream(readMessageData(is)), proto);
+                    }
+                    data = inv;
+                }
+                req.setData(data);
+            } catch (Throwable t) {
+                if (log.isWarnEnabled()) {
+                    log.warn("Decode request failed: " + t.getMessage(), t);
+                }
+                // bad request
+                req.setBroken(true);
+                req.setData(t);
+            }
+            return req;
+        }
+    }
+```
+解码完毕后，netty执行内部逻辑后最终会调用dubbo设置的NettyServerHandler.channelRead方法，然后在以此经过NettyServer.received>MultiMessageHandler.received>AllChannelHandler.received，从这里开始我们的io线程会把后续工作转交给biz线程
+```java
+    // AllChannelHandler
+    public void received(Channel channel, Object message) throws RemotingException {
+        // 根据端口最终会获取对应线程池，默认为：fixed 200个线程
+        ExecutorService executor = getPreferredExecutorService(message);
+        try {
+            // 交给biz线程池 channel=NettyChannel,handler=DecodeHandler,message=Request(客户端的请求）
+            executor.execute(new ChannelEventRunnable(channel, handler, ChannelState.RECEIVED, message));
+        } catch (Throwable t) {
+        	if(message instanceof Request && t instanceof RejectedExecutionException){
+                sendFeedback(channel, (Request) message, t);
+                return;
+        	}
+            throw new ExecutionException(message, channel, getClass() + " error when process received event .", t);
+        }
+    }
+```
+接下来就biz线程池会执行ChannelEventRunnable任务的run方法：
+```java
+    public void run() {
+        if (state == ChannelState.RECEIVED) {
+            try {
+                // 交给DecodeHandler 
+                handler.received(channel, message);
+            } catch (Exception e) {
+                logger.warn("ChannelEventRunnable handle " + state + " operation error, channel is " + channel+ ", message is " + message, e);
+            }
+        } else {
+            //...
+        }
+
+    }
+```
+DecodeHandler会对可解码的message完成最后的解码工作，在消费者解码已经介绍过：
+```java
+    public void received(Channel channel, Object message) throws RemotingException {
+        // 本次为request
+        if (message instanceof Request) {
+            decode(((Request) message).getData());
+        }
+        // 解码后交给HeaderExchangeHandler.received
+        handler.received(channel, message);
+    }
+    private void decode(Object message) {
+        if (message instanceof Decodeable) {
+            try {
+                // 最终会调用DecodeableRpcInvocation.decode方法
+                ((Decodeable) message).decode();
+            } catch (Throwable e) {} // ~ end of catch
+        } // ~ end of if
+    } // ~ end of method decode
+
+    // DecodeableRpcInvocation.decode
+    public void decode() throws Exception {
+        if (!hasDecoded && channel != null && inputStream != null) {
+            try {
+                decode(channel, inputStream);
+            } catch (Throwable e) {
+            } finally {
+                hasDecoded = true;
+            }
+        }
+    }
+    // 做最终的解码，包括反序列化和各种属性的获取
+    public Object decode(Channel channel, InputStream input) throws IOException {
+        // 反序列化
+        ObjectInput in = CodecSupport.getSerialization(channel.getUrl(), serializationType)
+                .deserialize(channel.getUrl(), input);
+        // 读取dubbo版本2.0.2
+        String dubboVersion = in.readUTF();
+        request.setVersion(dubboVersion);
+        setAttachment(DUBBO_VERSION_KEY, dubboVersion);
+        // 读取路径 org.apache.dubbo.demo.DemoService
+        String path = in.readUTF();
+        setAttachment(PATH_KEY, path);
+        setAttachment(VERSION_KEY, in.readUTF());
+        // 方法名称 sayHello
+        setMethodName(in.readUTF());
+        // 参数类型Ljava/lang/String;
+        String desc = in.readUTF();
+        setParameterTypesDesc(desc);
+        try {
+            Object[] args = DubboCodec.EMPTY_OBJECT_ARRAY;
+            Class<?>[] pts = DubboCodec.EMPTY_CLASS_ARRAY;
+            if (desc.length() > 0) {
+                // 获取服务仓库，这里包含path和ServiceDescriptor的映射
+                ServiceRepository repository = ApplicationModel.getServiceRepository();
+                // 获取目标服务信息
+                ServiceDescriptor serviceDescriptor = repository.lookupService(path);
+                if (serviceDescriptor != null) {
+                    // 获取目标方法信息
+                    MethodDescriptor methodDescriptor = serviceDescriptor.getMethod(getMethodName(), desc);
+                    if (methodDescriptor != null) {
+                        pts = methodDescriptor.getParameterClasses();
+                        // 设置返回类型
+                        this.setReturnTypes(methodDescriptor.getReturnTypes());
+                    }
+                }
+                if (pts == DubboCodec.EMPTY_CLASS_ARRAY) {
+                    if (!RpcUtils.isGenericCall(desc, getMethodName()) && !RpcUtils.isEcho(desc, getMethodName())) {
+                        throw new IllegalArgumentException("Service not found:" + path + ", " + getMethodName());
+                    }
+                    pts = ReflectUtils.desc2classArray(desc);
+                }
+                args = new Object[pts.length];
+                for (int i = 0; i < args.length; i++) {
+                    try {
+                        // 逐个读取入参
+                        args[i] = in.readObject(pts[i]);
+                    } catch (Exception e) {
+                    }
+                }
+            }
+            setParameterTypes(pts);
+            Map<String, Object> map = in.readAttachments();
+            if (map != null && map.size() > 0) {
+                Map<String, Object> attachment = getObjectAttachments();
+                if (attachment == null) {
+                    attachment = new HashMap<>();
+                }
+                attachment.putAll(map);
+                setObjectAttachments(attachment);
+            }
+            //decode argument ,may be callback 
+            for (int i = 0; i < args.length; i++) {
+                args[i] = decodeInvocationArgument(channel, this, pts, i, args[i]);
+            }
+            setArguments(args);
+            // org.apache.dubbo.demo.DemoService:0.0.0
+            String targetServiceName = buildKey((String) getAttachment(PATH_KEY),
+                    getAttachment(GROUP_KEY),
+                    getAttachment(VERSION_KEY));
+            setTargetServiceUniqueName(targetServiceName);
+        } catch (ClassNotFoundException e) {
+            throw new IOException(StringUtils.toString("Read invocation data failed.", e));
+        } finally {
+            if (in instanceof Cleanable) {
+                ((Cleanable) in).cleanup();
+            }
+        }
+        return this;
+    }
+```
+解码完毕后，下面将是通过解码后的message找到我们即将要调用的invoker。
 ## 找到服务端的invoker
+HeaderExchangeHandler.received源码：
+```java
+    public void received(Channel channel, Object message) throws RemotingException {
+        final ExchangeChannel exchangeChannel = HeaderExchangeChannel.getOrAddChannel(channel);
+        if (message instanceof Request) {
+            // handle request.
+            Request request = (Request) message;
+            if (request.isEvent()) {
+                handlerEvent(channel, request);
+            } else {
+                if (request.isTwoWay()) {
+                    // 处理request
+                    handleRequest(exchangeChannel, request);
+                } else {
+                    handler.received(exchangeChannel, request.getData());
+                }
+            }
+        } 
+    }
+    void handleRequest(final ExchangeChannel channel, Request req) throws RemotingException {
+        // 封装返回对象
+        Response res = new Response(req.getId(), req.getVersion());
+        if (req.isBroken()) {
+            // 异常则返回bad
+            res.setErrorMessage("Fail to decode request due to: " + msg);
+            res.setStatus(Response.BAD_REQUEST);
+            channel.send(res);
+            return;
+        }
+        // find handler by message class.
+        Object msg = req.getData();
+        try {
+            // 最终会调用DubboProtocol的内部类ExchangeHandlerAdapter
+            CompletionStage<Object> future = handler.reply(channel, msg);
+            // 拿到结果后，进行响应数据
+            future.whenComplete((appResult, t) -> {
+                try {
+                    if (t == null) {
+                        res.setStatus(Response.OK);
+                        res.setResult(appResult);
+                    } else {
+                        res.setStatus(Response.SERVICE_ERROR);
+                        res.setErrorMessage(StringUtils.toString(t));
+                    }
+                    // 调用nettychannel发送响应数据
+                    channel.send(res);
+                } catch (RemotingException e) {
+                    logger.warn("Send result to consumer failed, channel is " + channel + ", msg is " + e);
+                }
+            });
+        } catch (Throwable e) {
+            res.setStatus(Response.SERVICE_ERROR);
+            res.setErrorMessage(StringUtils.toString(e));
+            channel.send(res);
+        }
+    }
+```
+我们看下DubboProtocol$ExchangeHandlerAdapter.reply，其主要目的就是获取要调用的invoker，其源码如下：
+```java
+        public CompletableFuture<Object> reply(ExchangeChannel channel, Object message) throws RemotingException {
+            Invocation inv = (Invocation) message;
+            Invoker<?> invoker = getInvoker(channel, inv);
+            // need to consider backward-compatibility if it's a callback
+            if (Boolean.TRUE.toString().equals(inv.getObjectAttachments().get(IS_CALLBACK_SERVICE_INVOKE))) {
+                String methodsStr = invoker.getUrl().getParameters().get("methods");
+                boolean hasMethod = false;
+                if (methodsStr == null || !methodsStr.contains(",")) {
+                    hasMethod = inv.getMethodName().equals(methodsStr);
+                } else {
+                    String[] methods = methodsStr.split(",");
+                    for (String method : methods) {
+                        if (inv.getMethodName().equals(method)) {
+                            hasMethod = true;
+                            break;
+                        }
+                    }
+                }
+                if (!hasMethod) {
+                    return null;
+                }
+            }
+            RpcContext.getContext().setRemoteAddress(channel.getRemoteAddress());
+            // 执行invoke
+            Result result = invoker.invoke(inv);
+            return result.thenApply(Function.identity());
+        }
+    // 获取invoker
+   Invoker<?> getInvoker(Channel channel, Invocation inv) throws RemotingException {
+        boolean isCallBackServiceInvoke = false;
+        boolean isStubServiceInvoke = false;
+        int port = channel.getLocalAddress().getPort();
+        String path = (String) inv.getObjectAttachments().get(PATH_KEY);
+        // 根据参数组装serverKey
+        String serviceKey = serviceKey(
+                port,
+                path,
+                (String) inv.getObjectAttachments().get(VERSION_KEY),
+                (String) inv.getObjectAttachments().get(GROUP_KEY)
+        );
+        // 通过serviceKey在导出的服务中获取服务invoker
+        DubboExporter<?> exporter = (DubboExporter<?>) exporterMap.get(serviceKey);
+        if (exporter == null) {
+            throw new RemotingException(channel, "Not found exported service: " + serviceKey + " in " + exporterMap.keySet() + ", may be version or group mismatch " +
+                    ", channel: consumer: " + channel.getRemoteAddress() + " --> provider: " + channel.getLocalAddress() + ", message:" + getInvocationWithoutData(inv));
+        }
+
+        return exporter.getInvoker();
+    }
+```
+## invoker的执行
+invoker执行逻辑第一站就是执行ProtocolFilterWrapper下构建的过滤器链：
+EchoFilter>ClassLoaderFilter>GenericFilter>ContextFilter>TraceFilter>TimeoutFilter>MonitorFilter>ExceptionFilter>
+```java
+    // ProtocolFilterWrapper
+    public Result invoke(Invocation invocation) throws RpcException {
+        Result asyncResult;
+        try {
+            asyncResult = filter.invoke(next, invocation);
+        } catch (Exception e) {
+            if (filter instanceof ListenableFilter) {
+                ListenableFilter listenableFilter = ((ListenableFilter) filter);
+                try {
+                    Filter.Listener listener = listenableFilter.listener(invocation);
+                    if (listener != null) {
+                        listener.onError(e, invoker, invocation);
+                    }
+                } finally {
+                    listenableFilter.removeListener(invocation);
+                }
+            } else if (filter instanceof Filter.Listener) {
+                Filter.Listener listener = (Filter.Listener) filter;
+                listener.onError(e, invoker, invocation);
+            }
+            throw e;
+        } finally {
+        
+        }
+        return asyncResult.whenCompleteWithContext((r, t) -> {
+            if (filter instanceof ListenableFilter) {
+                ListenableFilter listenableFilter = ((ListenableFilter) filter);
+                Filter.Listener listener = listenableFilter.listener(invocation);
+                try {
+                    if (listener != null) {
+                        if (t == null) {
+                            listener.onResponse(r, invoker, invocation);
+                        } else {
+                            listener.onError(t, invoker, invocation);
+                        }
+                    }
+                } finally {
+                    listenableFilter.removeListener(invocation);
+                }
+            } else if (filter instanceof Filter.Listener) {
+                Filter.Listener listener = (Filter.Listener) filter;
+                if (t == null) {
+                    listener.onResponse(r, invoker, invocation);
+                } else {
+                    listener.onError(t, invoker, invocation);
+                }
+            }
+        });
+        }
+```
+经过调用一系列过滤器和包装器，最终invoker会走到JavassistProxyFactory，进一步调用目标对象：
+```java
+    // JavassistProxyFactory$1，的父类AbstractProxyInvoker.invoke
+    public Result invoke(Invocation invocation) throws RpcException {
+        try {
+            // 调用的是子类的内部类
+            Object value = doInvoke(proxy, invocation.getMethodName(), invocation.getParameterTypes(), invocation.getArguments());
+			CompletableFuture<Object> future = wrapWithFuture(value);
+            CompletableFuture<AppResponse> appResponseFuture = future.handle((obj, t) -> {
+                AppResponse result = new AppResponse();
+                if (t != null) {
+                    if (t instanceof CompletionException) {
+                        result.setException(t.getCause());
+                    } else {
+                        result.setException(t);
+                    }
+                } else {
+                    result.setValue(obj);
+                }
+                return result;
+            });
+            return new AsyncRpcResult(appResponseFuture, invocation);
+        } catch (InvocationTargetException e) {
+            return AsyncRpcResult.newDefaultAsyncResult(null, e.getTargetException(), invocation);
+        } catch (Throwable e) {
+            throw new RpcException("Failed to invoke remote proxy method " + invocation.getMethodName() + " to " + getUrl() + ", cause: " + e.getMessage(), e);
+        }
+    }
+    // 在服务导出时候，返回的invoker是内部包装类
+    public <T> Invoker<T> getInvoker(T proxy, Class<T> type, URL url) {
+        final Wrapper wrapper = Wrapper.getWrapper(proxy.getClass().getName().indexOf('$') < 0 ? proxy.getClass() : type);
+        return new AbstractProxyInvoker<T>(proxy, type, url) {
+            @Override
+            protected Object doInvoke(T proxy, String methodName,
+                                      Class<?>[] parameterTypes,
+                                      Object[] arguments) throws Throwable {
+                return wrapper.invokeMethod(proxy, methodName, parameterTypes, arguments);
+            }
+        };
+    }
+```
+wrapper包装类最终调用类目标类proxy的目标方法sayHello，wrapper的源码如下：
+```java
+
+```
+到这里，服务方的目标方法执行完毕，下面将进入服务执行结果的响应逻辑分析。
 ## 服务的响应
+返回结果："Hello dubbo, response from provider: 172.11.11.77:2808"，此结果首先在JavasisstProxyFactory中被包装为CompletableFuture对象：
+```java
+    public Result invoke(Invocation invocation) throws RpcException {
+        try {
+            // 获取调用biz业务代码结果
+            Object value = doInvoke(proxy, invocation.getMethodName(), invocation.getParameterTypes(), invocation.getArguments());
+            // 包装结果对象
+			CompletableFuture<Object> future = wrapWithFuture(value);
+            // 将结果包装到AppResponse对象中
+            CompletableFuture<AppResponse> appResponseFuture = future.handle((obj, t) -> {
+                AppResponse result = new AppResponse();
+                if (t != null) {
+                    if (t instanceof CompletionException) {
+                        result.setException(t.getCause());
+                    } else {
+                        result.setException(t);
+                    }
+                } else {
+                    result.setValue(obj);
+                }
+                return result;
+            });
+            // 再次包装到AsyncRpcResult中
+            return new AsyncRpcResult(appResponseFuture, invocation);
+        } catch (InvocationTargetException e) {
+            return AsyncRpcResult.newDefaultAsyncResult(null, e.getTargetException(), invocation);
+        } catch (Throwable e) {
+            throw new RpcException("Failed to invoke remote proxy method " + invocation.getMethodName() + " to " + getUrl() + ", cause: " + e.getMessage(), e);
+        }
+    }
+	private CompletableFuture<Object> wrapWithFuture(Object value) {
+        if (RpcContext.getContext().isAsyncStarted()) {
+            return ((AsyncContextImpl)(RpcContext.getContext().getAsyncContext())).getInternalFuture();
+        } else if (value instanceof CompletableFuture) {
+            return (CompletableFuture<Object>) value;
+        }
+        // 包装结果对象
+        return CompletableFuture.completedFuture(value);
+    }
+```
+返回的CompletableFuture对象经过层层回调，最后会回到HeaderExchangeHandler的handleRequest中，在获取结果后开始响应请求：
+```java
+   void handleRequest(final ExchangeChannel channel, Request req) throws RemotingException {
+        Response res = new Response(req.getId(), req.getVersion());
+        // find handler by message class.
+        Object msg = req.getData();
+        try {
+            // 获取结果
+            CompletionStage<Object> future = handler.reply(channel, msg);
+            future.whenComplete((appResult, t) -> {
+                try {
+                    if (t == null) {
+                        res.setStatus(Response.OK);
+                        res.setResult(appResult);
+                    } else {
+                        res.setStatus(Response.SERVICE_ERROR);
+                        res.setErrorMessage(StringUtils.toString(t));
+                    }
+                    // HeaderExchangeChannel 发送响应数据
+                    channel.send(res);
+                } catch (RemotingException e) {
+                    logger.warn("Send result to consumer failed, channel is " + channel + ", msg is " + e);
+                }
+            });
+        } catch (Throwable e) {
+            res.setStatus(Response.SERVICE_ERROR);
+            res.setErrorMessage(StringUtils.toString(e));
+            channel.send(res);
+        }
+    }
+```
+HeaderExchangeChannel.send方法源码：
+```java
+    public void send(Object message, boolean sent) throws RemotingException {
+        if (message instanceof Request
+                || message instanceof Response
+                || message instanceof String) {
+            // 会调用NettyChannel发送数据
+            channel.send(message, sent);
+        } else {
+            Request request = new Request();
+            request.setVersion(Version.getProtocolVersion());
+            request.setTwoWay(false);
+            request.setData(message);
+            channel.send(request, sent);
+        }
+    }
+```
+NettyChannel发送数据：
+```java
+    public void send(Object message, boolean sent) throws RemotingException {
+        boolean success = true;
+        int timeout = 0;
+        try {
+            // 最终会委托给 org.jboss.netty.channel.socket.nio.NioSocketChannel 发送数据
+            ChannelFuture future = channel.writeAndFlush(message);
+            if (sent) {
+                // wait timeout ms
+                timeout = getUrl().getPositiveParameter(TIMEOUT_KEY, DEFAULT_TIMEOUT);
+                success = future.await(timeout);
+            }
+            Throwable cause = future.cause();
+            if (cause != null) {
+                throw cause;
+            }
+        } catch (Throwable e) {
+            removeChannelIfDisconnected(channel);
+            throw new RemotingException(this, "Failed to send message " + PayloadDropper.getRequestWithoutData(message) + " to " + getRemoteAddress() + ", cause: " + e.getMessage(), e);
+        }
+    }
+```
+到这里，我们肯定知道，netty发送数据前会先调用编码器进行编码的：NettyCodecAdapter$InternalEncoder
+```java
+    private class InternalEncoder extends MessageToByteEncoder {
+        @Override
+        protected void encode(ChannelHandlerContext ctx, Object msg, ByteBuf out) throws Exception {
+            org.apache.dubbo.remoting.buffer.ChannelBuffer buffer = new NettyBackedChannelBuffer(out);
+            Channel ch = ctx.channel();
+            NettyChannel channel = NettyChannel.getOrAddChannel(ch, url, handler);
+            codec.encode(channel, buffer, msg);
+        }
+    }
+```
+最终会调用DubboCodec进行编码：
+```java
+    protected void encodeResponse(Channel channel, ChannelBuffer buffer, Response res) throws IOException {
+        int savedWriteIndex = buffer.writerIndex();
+        try {
+            // 获取序列化 hessian2
+            Serialization serialization = getSerialization(channel);
+            // header. 请求头
+            byte[] header = new byte[HEADER_LENGTH];
+            // set magic number.
+            Bytes.short2bytes(MAGIC, header);
+            // set request and serialization flag.
+            header[2] = serialization.getContentTypeId();
+            if (res.isHeartbeat()) {
+                header[2] |= FLAG_EVENT;
+            }
+            // set response status.
+            byte status = res.getStatus();
+            header[3] = status;
+            // set request id.
+            Bytes.long2bytes(res.getId(), header, 4);
+            
+            buffer.writerIndex(savedWriteIndex + HEADER_LENGTH);
+            ChannelBufferOutputStream bos = new ChannelBufferOutputStream(buffer);
+            // 对响应数据进行序列化，此时是在io线程
+            ObjectOutput out = serialization.serialize(channel.getUrl(), bos);
+            // encode response data or error message.
+            if (status == Response.OK) {
+                if (res.isHeartbeat()) {
+                    encodeEventData(channel, out, res.getResult());
+                } else {
+                    // 序列化入结果和版本号
+                    encodeResponseData(channel, out, res.getResult(), res.getVersion());
+                }
+            } else {
+                out.writeUTF(res.getErrorMessage());
+            }
+            out.flushBuffer();
+            if (out instanceof Cleanable) {
+                ((Cleanable) out).cleanup();
+            }
+            bos.flush();
+            bos.close();
+            int len = bos.writtenBytes();
+            // 检测长度
+            checkPayload(channel, len);
+            Bytes.int2bytes(len, header, 12);
+            // write
+            buffer.writerIndex(savedWriteIndex);
+            buffer.writeBytes(header); // write header.
+            buffer.writerIndex(savedWriteIndex + HEADER_LENGTH + len);
+        } catch (Throwable t) {
+        }
+    }
+```
+到此，服务端的响应分析结束。
+
+# 总结
+本篇文章从消费者调用到服务端响应整个过程走了一遍，整个过程相对比较复杂。其中涉及到了路由，集群容错，负载均衡，过滤器责任链，监听器，异步转同步，biz线程和io线程的互转，请求的发送和响应结果匹配，协议的编码解码，对象的序列化和反序列化等等。
+本文目的是对整个调用过程的熟悉，涉及多个重要点只是简单提下，在今后的文章中会进行补充。
+> 边看源码边写本文，其中有以下几个想法：
+1. dubbo为了减少IO线程的阻塞，把工作尽量交给了biz线程，但是消费端的请求对象序列化和服务端的响应对象序列化依然绑定在IO上的，最为高性能之称，此处应该可以进一步优化。
+2. 服务降级，熔断，限流还很简陋。
+3. 路由不够好用。
+4. 协议不支持根据请求包的大小进行自动适配最合适的协议。
+
+# 参考文献
+- http://dubbo.apache.org/zh/docs/v2.7/dev/source/service-invoking-process/
+- https://blog.csdn.net/meilong_whpu/article/details/72178447
