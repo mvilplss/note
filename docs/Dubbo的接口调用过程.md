@@ -714,7 +714,7 @@ public class DubboInvoker<T> extends AbstractInvoker<T> {
 ![](https://raw.githubusercontent.com/mvilplss/note/master/image/.Dubbo的接口调用过程_images/c28fb30f.png)
 Dubbo 数据包分为消息头和消息体，消息头用于存储一些元信息，比如魔数（Magic），数据包类型（Request/Response），消息体长度（Data Length）等。消息体中用于存储具体的调用消息，比如方法名称，参数列表等。下面简单列举一下消息头的内容。
 |偏移量(Bit)	|字段	|取值    |
-|----|----|----|
+| -------------- | -------------- | -------------- |
 |0 ~ 7	|魔数高位|	0xda00   |
 |8 ~ 15	|魔数低位|	0xbb    |
 |16	|数据包类型|	0 - Response, 1 - Request        |
@@ -723,7 +723,6 @@ Dubbo 数据包分为消息头和消息体，消息头用于存储一些元信�
 |19 ~ 23	|序列化器编号|	2 - Hessian2Serialization   3 - JavaSerialization  4 - CompactedJavaSerialization  6 - FastJsonSerialization  7 - NativeJavaSerialization  8 - KryoSerialization  9 - FstSerialization    |
 |24 ~ 31|	状态	|20 - OK |
 |30 - CLIENT_TIMEOUT 31 - SERVER_TIMEOUT  40 - BAD_REQUEST  50 - BAD_RESPONSE  |
-……
 |32 ~ 95|	请求编号|	共8字节，运行时生成 |
 |96 ~ 127|	消息体长度|	运行时计算 |
 
