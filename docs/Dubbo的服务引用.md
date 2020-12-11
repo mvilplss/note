@@ -7,7 +7,7 @@ tags:
 - java
 - dubbo
 copyright: true
-cover: https://gitee.com/mvilplss/note/raw/master/image/dubbo1.png.png
+cover: https://raw.githubusercontent.com/mvilplss/note/master/image/dubbo1.png
 ---
 
 ## 简介

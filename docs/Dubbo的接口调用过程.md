@@ -1,13 +1,13 @@
 ---
 title: Dubbo的接口调用过程
-date: 2020-12-03
+date: 2020-12-06
 categories:
 - 开发技术
 tags:
 - java
 - dubbo
 copyright: true
-cover: https://gitee.com/mvilplss/note/raw/master/image/dubbo1.png.png
+cover: https://raw.githubusercontent.com/mvilplss/note/master/image/.Dubbo的接口调用过程_images/invokercustomer.png
 ---
 # 简介
 本篇文件我们研究dubbo服务的调用过程，即从消费端发起接口调用到服务端接收请求，然后返回到消费端结果的整个一个调用过程。
