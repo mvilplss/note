@@ -7,7 +7,7 @@ tags:
 - java
 - dubbo
 copyright: true
-cover: https://raw.githubusercontent.com/mvilplss/note/master/image/Dubbo的集群容错_images/f0369658.png
+cover: https://raw.githubusercontent.com/mvilplss/note/master/image/Dubbo的负载均衡_images/05058665.png
 ---
 # 简介
 负载均衡其实就是一个同样的工作任务下，对具有同样一批工作能力的人根据不同策略进行分工的一个哲学问题。不过在程序中进行任务分配就比较单纯了，在Dubbo
@@ -354,6 +354,7 @@ public class RoundRobinLoadBalance extends AbstractLoadBalance {
 > 除了上面的算法，思考下加入要求你实现轮询加权，还有没有其他的实现方式？如优先队列？计数器？或其他算法？
 
 ## ConsistentHashLoadBalance
+
 一致性 hash 算法由麻省理工学院的 Karger 及其合作作者于1997年提出的，算法提出之初是用于大规模缓存系统的负载均衡。它的工作过程是这样的，首先根据 ip 或者其他的信息为缓存节点生成一个 hash，并将这个 hash
 投射到 [0, 2^32 - 1] 的圆环上。当有查询或写入请求时，则为缓存项的 key 生成一个 hash 值。然后查找第一个大于或等于该 hash
 值的缓存节点，并到这个节点中查询或写入缓存项。如果当前节点挂了，则在下一次查询或写入缓存时，为缓存项查找另一个大于其 hash 值的缓存节点即可。大致效果如下图所示，每个缓存节点在圆环上占据一个位置。如果缓存项的 key 的 hash
@@ -364,24 +365,31 @@ public class RoundRobinLoadBalance extends AbstractLoadBalance {
 这里相同颜色的节点均属于同一个服务提供者，比如 Invoker1-1，Invoker1-2，……, Invoker1-160。这样做的目的是通过引入虚拟节点，让 Invoker
 在圆环上分散开来，避免数据倾斜问题。所谓数据倾斜是指，由于节点不够分散，导致大量请求落到了同一个节点上，而其他节点只会接收到了少量请求的情况。比如：
 ![](https://raw.githubusercontent.com/mvilplss/note/master/image/Dubbo的负载均衡_images/16808650.png)
+如上，由于 Invoker-1 和 Invoker-2 在圆环上分布不均，导致系统中75%的请求都会落到 Invoker-1 上，只有 25% 的请求会落到 Invoker-2
+上。解决这个问题办法是引入虚拟节点，通过虚拟节点均衡各个节点的请求量。
 
 ```java
 public class ConsistentHashLoadBalance extends AbstractLoadBalance {
     public static final String NAME = "consistenthash";
-    public static final String HASH_NODES = "hash.nodes";
-    public static final String HASH_ARGUMENTS = "hash.arguments";
+    public static final String HASH_NODES = "hash.nodes";// 设置 hash 的虚拟节点个数，默认 160
+    public static final String HASH_ARGUMENTS = "hash.arguments";// 配置的 hash 计算参与的参数下标，如：0,1,2，默认0
 
     private final ConcurrentMap<String, ConsistentHashSelector<?>> selectors = new ConcurrentHashMap<String, ConsistentHashSelector<?>>();
 
     @Override
     protected <T> Invoker<T> doSelect(List<Invoker<T>> invokers, URL url, Invocation invocation) {
         String methodName = RpcUtils.getMethodName(invocation);
+        // 类似：org.apache.dubbo.demo.DemoService.sayHello
         String key = invokers.get(0).getUrl().getServiceKey() + "." + methodName;
         // using the hashcode of list to compute the hash only pay attention to the elements in the list
+        // 获取 集合 invokers 的原始 hash 值，其目的用来判断集合是否有改变
         int invokersHashCode = invokers.hashCode();
         ConsistentHashSelector<T> selector = (ConsistentHashSelector<T>) selectors.get(key);
+        // 如果 selector 为 null 或者 invokers 集合有变动，则进行重新hash计算
         if (selector == null || selector.identityHashCode != invokersHashCode) {
-            selectors.put(key, new ConsistentHashSelector<T>(invokers, methodName, invokersHashCode));
+            // 对服务列表 invokers 进行创建一个 hash 节点
+            ConsistentHashSelector<T> hashSelector = new ConsistentHashSelector<>(invokers, methodName, invokersHashCode);
+            selectors.put(key, hashSelector);
             selector = (ConsistentHashSelector<T>) selectors.get(key);
         }
         return selector.select(invocation);
@@ -392,32 +400,48 @@ public class ConsistentHashLoadBalance extends AbstractLoadBalance {
         private final int replicaNumber;
         private final int identityHashCode;
         private final int[] argumentIndex;
-
+        // 初始化 hash 虚拟节点
         ConsistentHashSelector(List<Invoker<T>> invokers, String methodName, int identityHashCode) {
+            // new 一个 TreeMap 用来存储 hash 和 invoker 映射
             this.virtualInvokers = new TreeMap<Long, Invoker<T>>();
             this.identityHashCode = identityHashCode;
             URL url = invokers.get(0).getUrl();
+            // 获取要创建的节点个数，缺省配置为160
             this.replicaNumber = url.getMethodParameter(methodName, HASH_NODES, 160);
+            // 获取参与 hash 计算的参数下标
             String[] index = COMMA_SPLIT_PATTERN.split(url.getMethodParameter(methodName, HASH_ARGUMENTS, "0"));
             argumentIndex = new int[index.length];
             for (int i = 0; i < index.length; i++) {
                 argumentIndex[i] = Integer.parseInt(index[i]);
             }
+            // 进行循环服务列表，计算 hash 并设置到虚拟节点 virtualInvokers 中
             for (Invoker<T> invoker : invokers) {
+                // 获取服务器地址，类似：127.0.0.1:8082
                 String address = invoker.getUrl().getAddress();
+                // 循环节点的四分之一次，因为每次会进行虚拟4个节点
                 for (int i = 0; i < replicaNumber / 4; i++) {
+                    // 对地址进行+i，然后做md5计算：127.0.0.1:80820
+                    // 对 address + i 进行 md5 运算，得到一个长度为16的字节数组
                     byte[] digest = md5(address + i);
+                    // 对 digest 部分字节进行4次 hash 运算，得到四个不同的 long 型正整数
                     for (int h = 0; h < 4; h++) {
+                        // h = 0 时，取 digest 中下标为 0 ~ 3 的4个字节进行位运算
+                        // h = 1 时，取 digest 中下标为 4 ~ 7 的4个字节进行位运算
+                        // h = 2, h = 3 时过程同上
                         long m = hash(digest, h);
+                        // 将 hash 到 invoker 的映射关系存储到 virtualInvokers 中，
+                        // virtualInvokers 需要提供高效的查询操作，因此选用 TreeMap 作为存储结构
                         virtualInvokers.put(m, invoker);
                     }
                 }
             }
         }
-
+        // 
         public Invoker<T> select(Invocation invocation) {
             String key = toKey(invocation.getArguments());
             byte[] digest = md5(key);
+            // 取 digest 数组的前四个字节进行 hash 运算，再将 hash 值传给 selectForKey 方法，
+            // 寻找合适的 Invoker
             return selectForKey(hash(digest, 0));
         }
 
@@ -432,13 +456,19 @@ public class ConsistentHashLoadBalance extends AbstractLoadBalance {
         }
 
         private Invoker<T> selectForKey(long hash) {
+            // 到 TreeMap 中查找第一个节点值大于或等于当前 hash 的 Invoker
             Map.Entry<Long, Invoker<T>> entry = virtualInvokers.ceilingEntry(hash);
+            // 如果 hash 大于 Invoker 在圆环上最大的位置，此时 entry = null，
+            // 需要将 TreeMap 的头节点赋值给 entry
             if (entry == null) {
                 entry = virtualInvokers.firstEntry();
             }
             return entry.getValue();
         }
 
+        // [-128, 127, -128, 127, -128, 127, -128, 127, -128, 127, -128, 127, -128, 127, -128, 127]
+        // 10000000,01111111,10000000,01111111,10000000,01111111,10000000,01111111,10000000,01111111,10000000,01111111,
+        //        10000000,01111111,10000000,01111111
         private long hash(byte[] digest, int number) {
             return (((long) (digest[3 + number * 4] & 0xFF) << 24)
                     | ((long) (digest[2 + number * 4] & 0xFF) << 16)
@@ -464,11 +494,83 @@ public class ConsistentHashLoadBalance extends AbstractLoadBalance {
 
 }
 ```
-
-
+一致性hash负载均衡的难点在于理解虚拟节点的生成和根据 hash 值选择节点，也就是对treeMap数据结构的理解 和 hash 相关的位算法的理解。
 ## ShortestResponseLoadBalance
-在2.7.7版本中由 August 贡献(https://github.com/apache/dubbo/pull/6064)，出现理由
+在2.7.7版本中由 August 贡献(https://github.com/apache/dubbo/pull/6064)，作者添加此负载理由当使用 LeastActiveLoadBalance 
+时候，如果服务直接性能差距较大时候，就可能会出现性能好的服务触发限流了，但是性能不好的服务可能还比较空闲。因此实现来一个根据服务响应快慢来做负载均衡的一个算法：
+```java
+public class ShortestResponseLoadBalance extends AbstractLoadBalance {
+
+    public static final String NAME = "shortestresponse";
+
+    @Override
+    protected <T> Invoker<T> doSelect(List<Invoker<T>> invokers, URL url, Invocation invocation) {
+        // Number of invokers
+        int length = invokers.size();
+        // Estimated shortest response time of all invokers
+        long shortestResponse = Long.MAX_VALUE;
+        // The number of invokers having the same estimated shortest response time
+        int shortestCount = 0;
+        // The index of invokers having the same estimated shortest response time
+        int[] shortestIndexes = new int[length];
+        // the weight of every invokers
+        int[] weights = new int[length];
+        // The sum of the warmup weights of all the shortest response  invokers
+        int totalWeight = 0;
+        // The weight of the first shortest response invokers
+        int firstWeight = 0;
+        // Every shortest response invoker has the same weight value?
+        boolean sameWeight = true;
+
+        // Filter out all the shortest response invokers
+        for (int i = 0; i < length; i++) {
+            Invoker<T> invoker = invokers.get(i);
+            RpcStatus rpcStatus = RpcStatus.getStatus(invoker.getUrl(), invocation.getMethodName());
+            // Calculate the estimated response time from the product of active connections and succeeded average elapsed time.
+            long succeededAverageElapsed = rpcStatus.getSucceededAverageElapsed();
+            int active = rpcStatus.getActive();
+            long estimateResponse = succeededAverageElapsed * active;
+            int afterWarmup = getWeight(invoker, invocation);
+            weights[i] = afterWarmup;
+            // Same as LeastActiveLoadBalance
+            if (estimateResponse < shortestResponse) {
+                shortestResponse = estimateResponse;
+                shortestCount = 1;
+                shortestIndexes[0] = i;
+                totalWeight = afterWarmup;
+                firstWeight = afterWarmup;
+                sameWeight = true;
+            } else if (estimateResponse == shortestResponse) {
+                shortestIndexes[shortestCount++] = i;
+                totalWeight += afterWarmup;
+                if (sameWeight && i > 0
+                        && afterWarmup != firstWeight) {
+                    sameWeight = false;
+                }
+            }
+        }
+        if (shortestCount == 1) {
+            return invokers.get(shortestIndexes[0]);
+        }
+        if (!sameWeight && totalWeight > 0) {
+            int offsetWeight = ThreadLocalRandom.current().nextInt(totalWeight);
+            for (int i = 0; i < shortestCount; i++) {
+                int shortestIndex = shortestIndexes[i];
+                offsetWeight -= weights[shortestIndex];
+                if (offsetWeight < 0) {
+                    return invokers.get(shortestIndex);
+                }
+            }
+        }
+        return invokers.get(shortestIndexes[ThreadLocalRandom.current().nextInt(shortestCount)]);
+    }
+}
+```
+最短响应负载均衡和最少活跃数负载均衡类似，只不过是最少活跃数的计算点是响应时间，其逻辑也是先获取最少响应时间的 invokers 
+的下标，如果只有一个最少响应时间的服务就直接返回，否则判断是否权重相同，如果权重相同则随机抽取一个服务返回，否则根据权重选择一个服务然后返回。
 
 # 总结
+本章内容设计到一些经典的算法，理解起来不是很难，但是千亿级的服务器的访问下就是这些负载均衡在高效稳定的分配者一个个请求到服务端，弄懂和掌握这些负载均衡的逻辑至关重要。
 
 # 参考文献
+- http://dubbo.apache.org/zh/docs/v2.7/dev/source/loadbalance/#3%E6%80%BB%E7%BB%93
