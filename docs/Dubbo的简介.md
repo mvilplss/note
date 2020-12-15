@@ -19,7 +19,7 @@ Dubbo共有六个开发人员参与开发和测试，每一个开发人员都是
 李鼎 （开发人员/用户支持）  
 陈雷 （开发人员/质量保障）  
 闾刚 （开发人员/开源运维）  
-![](https://raw.githubusercontent.com/mvilplss/note/master/image/Dubbo的简介_images/9c4e1f67.png)
+![](https://raw.githubusercontent.com/mvilplss/note/master/image/.Dubbo的简介_images/9c4e1f67.png)
 从左至右：刘超，梁飞，闾刚，陈雷，刘昊旻，李鼎
 ## Dubbo有哪些核心能力
 ### 面向接口代理的高性能RPC调用
