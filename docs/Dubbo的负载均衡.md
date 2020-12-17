@@ -496,7 +496,7 @@ public class ConsistentHashLoadBalance extends AbstractLoadBalance {
 ```
 一致性hash负载均衡的难点在于理解虚拟节点的生成和根据 hash 值选择节点，也就是对treeMap数据结构的理解 和 hash 相关的位算法的理解。
 ## ShortestResponseLoadBalance
-在2.7.7版本中由 August 贡献(https://github.com/apache/dubbo/pull/6064)，作者添加此负载理由当使用 LeastActiveLoadBalance 
+在2.7.7版本中由 August 贡献( https://github.com/apache/dubbo/pull/6064 )，作者添加此负载理由当使用 LeastActiveLoadBalance 
 时候，如果服务直接性能差距较大时候，就可能会出现性能好的服务触发限流了，但是性能不好的服务可能还比较空闲。因此实现来一个根据服务响应快慢来做负载均衡的一个算法：
 ```java
 public class ShortestResponseLoadBalance extends AbstractLoadBalance {
