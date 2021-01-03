@@ -88,3 +88,8 @@ heading_index:
   global_prefix: ""
   global_suffix: ". "
 ```
+## 卸载hexo
+```
+npm uninstall hexo-cli -g
+
+```
