@@ -4,7 +4,7 @@ date: 2017-01-02
 categories: 
 - 开发日常
 tags: 
-- 开发工具
+- 电脑技巧
 ---
 ## hexo install
 ### 安装brew
@@ -70,8 +70,14 @@ More info: [Deployment](https://hexo.io/docs/deployment.html)
 
 ## ERROR
 ERROR Deployer not found: git
+执行以下命令：
 ```
 npm install hexo-deployer-git --save
+```
+extends includes/layout.pug block content include includes/recent-posts.pug include includes/partial
+执行以下命令：
+```
+npm install --save hexo-renderer-jade hexo-generator-feed hexo-generator-sitemap hexo-browsersync hexo-generator-archive
 ```
 ## 增加标题数字
 ```yaml
