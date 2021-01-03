@@ -45,6 +45,16 @@ touch .localized
 ```
 pkill Finder
 ```
-
 至此我们就操作完了，正常情况下你创建的那个英文文件夹就展示为中文的了，如果没有则重启系统在观察下。
 备注：我操作的mac os为：Catalina
+## 其他
+如果要删除某个文件的本地化配置，操作如下：
+```
+cd /System/Library/CoreServices/SystemFolderLocalizations/zh_CN.lproj
+/usr/libexec/PlistBuddy -c "Delete 'Works'" SystemFolderLocalizations.strings
+
+cd /System/Library/CoreServices/SystemFolderLocalizations/en.lproj
+/usr/libexec/PlistBuddy -c "Delete 'Works'" SystemFolderLocalizations.strings
+```
+
+
