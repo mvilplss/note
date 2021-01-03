@@ -48,6 +48,12 @@ pkill Finder
 至此我们就操作完了，正常情况下你创建的那个英文文件夹就展示为中文的了，如果没有则重启系统在观察下。
 备注：我操作的mac os为：Catalina
 ## 其他
+查看某个文件夹名称是否有本地化配置：
+```
+cd /System/Library/CoreServices/SystemFolderLocalizations/zh_CN.lproj
+/usr/libexec/PlistBuddy -c 'Print :'Works'' SystemFolderLocalizations.strings
+```
+
 如果要删除某个文件的本地化配置，操作如下：
 ```
 cd /System/Library/CoreServices/SystemFolderLocalizations/zh_CN.lproj
@@ -57,4 +63,5 @@ cd /System/Library/CoreServices/SystemFolderLocalizations/en.lproj
 /usr/libexec/PlistBuddy -c "Delete 'Works'" SystemFolderLocalizations.strings
 ```
 
-
+## 参考
+- 关于 PlistBuddy 的语法，详见 https://blog.csdn.net/chqj_163/article/details/102590609
