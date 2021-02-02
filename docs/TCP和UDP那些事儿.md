@@ -107,6 +107,9 @@ CLOSED S&C
 完全没有连接。
 
 ![img.png](https://raw.githubusercontent.com/mvilplss/note/master/image/TCP和UDP那些事儿/img4.png)
+## TCP头部
+![img.png](https://raw.githubusercontent.com/mvilplss/note/master/image/TCP和UDP那些事儿/img5.png)
+
 # UDP
 用户数据报协议（英语：User Datagram Protocol，缩写：UDP；又称用户数据包协议）是一个简单的面向数据报的通信协议，位于OSI模型的传输层。该协议由David P. Reed在1980年设计且在RFC 768中被规范。典型网络上的众多使用UDP协议的关键应用在一定程度上是相似的。
 在TCP/IP模型中，UDP为网络层以上和应用层以下提供了一个简单的接口。UDP只提供数据的不可靠传递，它一旦把应用程序发给网络层的数据发送出去，就不保留数据备份（所以UDP有时候也被认为是不可靠的数据报协议）。UDP在IP数据报的头部仅仅加入了复用和数据校验字段。
@@ -116,6 +119,8 @@ UDP适用于不需要或在程序中执行错误检查和纠正的应用，它�
 一些应用程序不太需要可靠性机制，甚至可能因为引入可靠性机制而降低性能，所以它们使用UDP这种缺乏可靠性的协议。流媒体，实时多人游戏和IP语音（VoIP）是经常使用UDP的应用程序。 在这些特定应用中，丢包通常不是重大问题。如果应用程序需要高度可靠性，则可以使用诸如TCP之类的协议。
 例如，在VoIP中延迟和抖动是主要问题。如果使用TCP，那么任何数据包丢失或错误都将导致抖动，因为TCP在请求及重传丢失数据时不向应用程序提供后续数据。如果使用UDP，那么应用程序则需要提供必要的握手，例如实时确认已收到的消息。
 由于UDP缺乏拥塞控制，所以需要基于网络的机制来减少因失控和高速UDP流量负荷而导致的拥塞崩溃效应。换句话说，因为UDP发送端无法检测拥塞，所以像使用包队列和丢弃技术的路由器之类的网络基础设备会被用于降低UDP过大流量。数据拥塞控制协议（DCCP）设计成通过在诸如流媒体类型的高速率UDP流中增加主机拥塞控制，来减小这个潜在的问题。
+## UDP头部
+![img_1.png](https://raw.githubusercontent.com/mvilplss/note/master/image/TCP和UDP那些事儿/img6.png)
 
 # TCP和UDP比较
 1. TCP面向连接（如打电话要先拨号建立连接）;UDP是无连接的，即发送数据之前不需要建立连接
