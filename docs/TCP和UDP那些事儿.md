@@ -7,7 +7,7 @@ tags:
 - tcp
 - udp
 copyright: true
-cover: https://gitee.com/mvilplss/note/raw/master/image/dubbo1.png
+cover: https://raw.githubusercontent.com/mvilplss/note/master/image/TCP和UDP那些事儿/img.png
 ---
 # 简介
 学习网络的时候都了解过tcp和udp的一些特点，比如tcp有三次握手四次挥手，tcp消息可靠；udp传递速度快，udp可能丢数据。但是如果在详细一点来说可能就没那么清楚了，在这里我就本着知其然知其所以然的目标尽量搞清楚这些概念和特点。
