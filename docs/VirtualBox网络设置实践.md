@@ -107,6 +107,58 @@ ONBOOT=yes # 开机启动
 ```
 重启后配置生效。
 
+## MACOS下的设置
+MacOS下的设置和windows的设置稍微有点不同。
+1. 网卡1
+![img.png](https://gitee.com/mvilplss/note/raw/master/image/VirtualBox网络设置实践/img.png)
+   
+2. 网卡2
+![img.png](https://gitee.com/mvilplss/note/raw/master/image/VirtualBox网络设置实践/img2.png)
+   
+修改配置：
+cd /etc/sysconfig/network-scripts
+ifcfg-enp0s3
+```shell
+TYPE=Ethernet
+PROXY_METHOD=none
+BROWSER_ONLY=no
+BOOTPROTO=dhcp
+DEFROUTE=yes
+IPV4_FAILURE_FATAL=no
+IPV6INIT=yes
+IPV6_AUTOCONF=yes
+IPV6_DEFROUTE=yes
+IPV6_FAILURE_FATAL=no
+IPV6_ADDR_GEN_MODE=stable-privacy
+NAME=enp0s3
+UUID=55748483-a791-4a5f-acac-2cc8db27f73b
+DEVICE=enp0s3
+ONBOOT=yes
+HWADDR=08:00:27:DB:F4:33
+MACADDR=08:00:27:DB:F4:33
+```
+ifcfg-eth0
+```shell
+HWADDR=08:00:27:2D:CB:B6
+TYPE=Ethernet
+PROXY_METHOD=none
+BROWSER_ONLY=no
+BOOTPROTO=staic
+DEFROUTE=yes
+IPV4_FAILURE_FATAL=no
+IPV6INIT=yes
+IPV6_AUTOCONF=yes
+IPV6_DEFROUTE=yes
+IPV6_FAILURE_FATAL=no
+IPV6_ADDR_GEN_MODE=stable-privacy
+NAME="eth0"
+UUID=a4cf419a-5fc7-3b9e-8f9d-bb31cf459d22
+ONBOOT=yes
+AUTOCONNECT_PRIORITY=-999
+
+IPADDR=192.168.56.11
+GATEWAY=192.168.56.1
+```
 ## 参考
 - https://www.jianshu.com/p/e84c19effeea
 
