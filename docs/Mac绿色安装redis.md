@@ -39,6 +39,44 @@ $ src/redis-server redis.conf
 ```shell
 $ src/redis-cli
 ```
+## 开放6379端口
+查看网络
+```shell
+firewall-cmd --get-active-zones
+```
+查看某个端口是否打开
+```shell
+firewall-cmd --query-port=6379/tcp
+```
+打开对应的端口
+```shell
+firewall-cmd --zone=public --add-port=6379/tcp --permanent
+```
+重启防火墙
+```shell
+firewall-cmd --reload
+```
+## 关闭linux7防火墙
+查看防火墙状态
+```shell
+systemctl status firewalld.service
+```
+暂时关闭防火墙
+```shell
+systemctl stop firewalld.service
+```
+永久关闭防火墙
+```shell
+systemctl disable firewalld.service
+```
+临时开启防火墙
+```shell
+systemctl start firewalld.service
+```
+永久开启防火墙
+```shell
+systemctl enable firewalld.service
+```
 
 ## 参考
 - https://redis.io/download
