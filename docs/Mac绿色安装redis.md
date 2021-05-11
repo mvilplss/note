@@ -39,6 +39,11 @@ $ src/redis-server redis.conf
 ```shell
 $ src/redis-cli
 ```
+带密码链接
+```shell
+$ src/redis-cli -a password
+```
+
 ## 开放6379端口
 查看网络
 ```shell

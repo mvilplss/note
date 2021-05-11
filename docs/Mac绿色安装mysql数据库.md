@@ -21,6 +21,15 @@ mv mysql-8.0.22-macos10.15-x86_64 /Users/atomic/.app/mysql
 ```shell
 sudo chown -R atomic:wheel /Users/atomic/.app/mysql
 ```
+
+*linux要创建用户组和用户，同时授权文件夹
+```shell
+groupadd mysql
+useradd -r -s /sbin/nologin -g mysql mysql -d /usr/local/mysql 
+chown -R mysql .
+chgrp -R mysql .
+```
+
 初始化mysql
 ```shell
 cd /Users/atomic/.app/mysql/bin
@@ -63,12 +72,32 @@ cd /Users/atomic/.app/mysql/bin
 
 ## 修改密码
 ```mysql
-# 修改密码
+# mac 下修改密码
 SET PASSWORD = PASSWORD('your new password');
+# linux 下修改密码
+alter user 'root'@'localhost' identified by '123456';
+
 # 设置密码有效期为永久
 ALTER USER 'root'@'localhost' PASSWORD EXPIRE NEVER;
 # 刷新权限
 flush privileges;
+```
+## 打开远程访问
+```
+mysql> select host from user where user = 'root';
++-----------+
+| host      |
++-----------+
+| localhost |
++-----------+
+mysql> update user set host = '%' where user='root';
+mysql> flush privileges;
+mysql> select host  from user where user='root';
++------+
+| host |
++------+
+| %    |
++------+
 ```
 ## 其他
 如果启动mysql服务的时候出现问题，先在进程中关闭与mysql有关的进程。在应用程序中打开其他找到活动监视器。关闭相关进程即可。
