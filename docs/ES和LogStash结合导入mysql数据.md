@@ -122,13 +122,13 @@ input {
      output {
          if [type]=="article"{
              elasticsearch {
-                 hosts => ["v11:9200"]
+                 hosts => ["localhost:9200"]
                  index => "article"
                  document_id => "%{id}"
              }
          }
          stdout {
-               codec => json_lines
+               codec => "json_lines"
         }
     }
 ```
@@ -146,8 +146,66 @@ input {
 
 ```
 到此我们已经将mysql的数据导入了ES中。
+#### 通过binlog进行同步
+参考文章：https://cloud.tencent.com/document/product/845/35562
 
+## 怎么快速把mysql的大数据量导入ES？
+线上有个场景，就是有两千多万的一个订单数据，通过上述的mysql导入太慢，每秒导入100条数据，大约需要56小时，耗时主要是jdbc的IO和ES的写入数据IO。
+优化方案是减少网络IO：
+1. 先将数据库数据导出cvs文件中，避免jdbc的IO。
+2. 批量写入ES，减少IO次数。
+
+导出mysql数据:
+```shell
+mysql> SELECT * FROM tb_article 
+    -> INTO OUTFILE 'tb_article.cvs';
+```
+增加logstash的cvs导入配置：
+```shell
+  input {
+         file {
+           path => ["/Users/atomic/Desktop/tb_article.csv"]
+           start_position => "beginning",
+           type => "article"
+         }
+   }
+   filter {
+    csv{
+        separator => ","
+        columns => ["id","article","title","author"]
+        skip_empty_columns => true
+        remove_field => ["host", "tags", "path", "message"]
+       }
+    mutate{
+            convert => {
+              "id" => "integer"
+              "article" => "string"
+              "title" => "string"
+              "author" => "string"
+            }
+      }
+    }
+     output {
+         if [type]=="article"{
+             elasticsearch {
+                 hosts => ["localhost:9200"]
+                 index => "article"
+                 document_id => "%{id}"
+             }
+         }
+         stdout {
+           codec => "json_lines"
+          }      
+    }
+```
+执行导入：
+```shell
+./bin/logstash -f config/input/tb_artical.conf
+```
+结束
 # 参考文章
 - https://cloud.tencent.com/developer/article/1647080
 - https://www.elastic.co/cn/downloads/logstash
+- https://blog.csdn.net/pengge2/article/details/114585863
+- LogStash性能优化 http://www.leiyawu.com/2018/04/13/logstash%E4%BC%98%E5%8C%96/
 
