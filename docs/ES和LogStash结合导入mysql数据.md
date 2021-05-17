@@ -202,7 +202,7 @@ mysql> SELECT * FROM tb_article
 ```shell
 ./bin/logstash -f config/input/tb_artical.conf
 ```
-结束
+此时，每秒写入约1W数据，处理两千万数据只需要半个小时，在可接受范围内。
 # 参考文章
 - https://cloud.tencent.com/developer/article/1647080
 - https://www.elastic.co/cn/downloads/logstash
