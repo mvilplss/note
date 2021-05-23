@@ -2,9 +2,9 @@
 title: Java之动态代理
 date: 2019-09-17
 categories: 
-- 开发技术
+    - 开发技术
 tags: 
-- java
+    - java
 copyright: true
 ---
 
