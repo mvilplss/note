@@ -1,6 +1,6 @@
 ---
 title: ES和LogStash结合导入mysql数据
-date: 2021-5-04
+date: 2021-01-04
 categories:
     - 开发技术
 tags:
@@ -146,7 +146,7 @@ input {
 
 ```
 到此我们已经将mysql的数据导入了ES中。
-#### 通过binlog进行同步
+### 通过binlog进行同步
 参考文章：https://cloud.tencent.com/document/product/845/35562
 
 ## 怎么快速把mysql的大数据量导入ES？

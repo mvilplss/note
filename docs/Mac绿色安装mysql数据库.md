@@ -1,6 +1,6 @@
 ---
 title: Mac绿色安装mysql数据库
-date: 2020-01-05
+date: 2020-05-05
 categories: 
 - 开发日常
 tags: 

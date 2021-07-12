@@ -1,6 +1,6 @@
 ---
 title: Mac绿色安装redis
-date: 2021-02-05
+date: 2021-04-05
 categories: 
 - 开发日常
 tags: 
