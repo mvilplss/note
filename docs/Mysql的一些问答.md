@@ -6,7 +6,7 @@ categories:
 tags:
 - redis 
 copyright: true
-cover: https://gitee.com/mvilplss/note/raw/master/image/mysql.png
+cover: https://raw.githubusercontent.com/mvilplss/note/master/image/mysql.png
 ---
 # 数据库相关问题
 ## 数据库三范式
