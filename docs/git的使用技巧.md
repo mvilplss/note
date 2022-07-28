@@ -2,10 +2,9 @@
 title: git的使用技巧
 date: 2022-07-28
 categories:
-- 开发技术 
+- 电脑技巧 
 tags:
-- java
-- dubbo
+- git
 copyright: true
 cover: https://raw.githubusercontent.com/mvilplss/note/master/image/git.png
 ---
