@@ -101,3 +101,6 @@ org.apache.rocketmq.remoting.exception.RemotingTooMuchRequestException: sendDefa
 ```
 不要着急，这篇文章给出了详细解决方案：Mac宿主机访问Docker容器网络.md
 地址：https://mvilplss.github.io/2022/08/08/Mac宿主机访问Docker容器网络/
+
+参考文章
+- Docker安装RocketMQ https://segmentfault.com/a/1190000038704231
