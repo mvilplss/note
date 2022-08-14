@@ -6,7 +6,7 @@ categories:
   tags:
 - docker
   copyright: true
-cover: https://raw.githubusercontent.com/mvilplss/note/master/image/docker_search1.png
+cover: https://raw.githubusercontent.com/mvilplss/note/master/image/docker_s1.png
 ---
 # Docker搭建rocketmq环境
 搜索rocketmq镜像
@@ -14,6 +14,6 @@ cover: https://raw.githubusercontent.com/mvilplss/note/master/image/docker_searc
 docker search rocketmq
 ```
 结果如下：
-![https://raw.githubusercontent.com/mvilplss/note/master/image/docker_search1.png](img.png)
+![https://raw.githubusercontent.com/mvilplss/note/master/image/docker_s1.png](img.png)
 
 ## 安装namesrv
