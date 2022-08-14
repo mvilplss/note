@@ -3,9 +3,9 @@ title: Mac宿主机访问Docker容器网络
 date: 2022-08-08
 categories:
 - 开发技术
-  tags:
+tags:
 - docker
-  copyright: true
+copyright: true
 ---
 > 在mac上实践在docker中搭建rocketmq环境，发现宿主程序发送MQ消息连接失败，排查原因是broker注册到namesrv上的IP地址是docker容器的地址，而宿主机不能直接访问。后来更换了network host方式依然不行，经查询资料发现mac下的docker部署方式是将docker服务端部署在一台虚拟机里面，导致host方式通信失效。
 

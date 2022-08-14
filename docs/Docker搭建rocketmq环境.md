@@ -3,9 +3,9 @@ title: Docker搭建rocketmq环境
 date: 2022-08-08
 categories:
 - 开发技术
-  tags:
+tags:
 - docker
-  copyright: true
+copyright: true
 cover: https://raw.githubusercontent.com/mvilplss/note/master/image/docker_s1.png
 ---
 # Docker搭建rocketmq环境
