@@ -26,9 +26,10 @@ public class RocketMqTest {
         producer.start();
         Message msg = new Message();
         msg.setBody("hello rocketmq".getBytes(StandardCharsets.UTF_8));
-        msg.setTopic("tx_mq_topic");
+        msg.setTopic("topic_vip_system");
         SendResult send = producer.send(msg);
         System.out.println(send);
+        Thread.sleep(System.currentTimeMillis()+System.currentTimeMillis());
         producer.shutdown();
     }
 
@@ -149,7 +150,7 @@ public class RocketMqTest {
     public void test_consumer() throws Exception{
         DefaultMQPushConsumer consumer = new DefaultMQPushConsumer("test_group");
         consumer.setNamesrvAddr("localhost:9876");
-        consumer.subscribe("mq_t1", "*");
+        consumer.subscribe("topic_vip_system", "*");
         consumer.setConsumeFromWhere(ConsumeFromWhere.CONSUME_FROM_LAST_OFFSET);
 //        consumer.setConsumerGroup("group1");x
         consumer.registerMessageListener(new MessageListenerConcurrently() {
