@@ -467,7 +467,7 @@ SOLID的设计原则可以在开发过程中指导我们写出高质量的代码
 # 结束语
 理解和使用SOLID设计原则是一个持续学习和提升的过程，需要在项目开发过程中不断的学习和提高。
 
-另外还有一些编程指导思想感兴趣的同学也可以了解下：
+另外还有一些软件开发原则，感兴趣的同学也可以了解下：
 - KISS（Keep It Simple, Stupid）
 - DRY（Don't Repeat Yourself）
-- ETC
+- ETC（Easier To Change）
