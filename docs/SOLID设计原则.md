@@ -435,6 +435,7 @@ public class NotificationService {
     }
 }
 ```
+<image src="https://github.com/mvilplss/note/blob/master/image/dip.png?raw=true" alt="依赖倒置说明图"></image>
 
 在上述改进的代码中，我们首先定义了一个抽象的 MessageSender 接口，表示消息发送者的行为。然后，EmailSender 类实现了 MessageSender 接口，负责具体的电子邮件发送操作。
 
@@ -461,11 +462,11 @@ SOLID的设计原则可以在开发过程中指导我们写出高质量的代码
 > 毛泽东1930年5月在《反对本本主义》中提出的一个概念。毛泽东认为，在中国开展无产阶级革命，不讲究中国实际情况，生搬硬套马克思主义，就是本本主义（教条主义）。
 
 # 相关资料
-- 《代码整洁之道》8.5 https://book.douban.com/subject/34986245/
+- 《架构整洁之道》8.7 https://book.douban.com/subject/30333919/
 - 《设计模式：可复用面向对象软件的基础》9.4 https://book.douban.com/subject/34262305/
 
 # 结束语
-理解和使用SOLID设计原则是一个持续学习和提升的过程，需要在项目开发过程中不断的学习和提高。避免我们像开头提到的`庞然大物`，完全的跳出三界外，不在五个规则中；😓
+理解和使用SOLID设计原则是一个持续学习和提升的过程，需要在项目开发过程中不断的学习和提高。避免我们像开头提到的`庞然大物`，完全的跳出了三界外，不在五个规则中；😓
 
 另外还有一些软件开发原则，感兴趣的同学也可以了解下：
 - KISS（Keep It Simple, Stupid）
