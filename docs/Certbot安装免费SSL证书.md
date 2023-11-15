@@ -11,6 +11,16 @@ tags:
 ```
 yum install nginx
 ```
+## 升级依赖组件版本
+```
+pip uninstall requests
+pip uninstall urllib3
+yum remove python-urllib3
+yum remove python-requests
+yum install python-urllib3
+yum install python-requests
+
+```
 ## 安装Certbot
 https://certbot.eff.org/
 因为 Certbot 打包在 EPEL 中，所以在安装 Certbot 之前要先安装 EPEL
@@ -19,6 +29,7 @@ yum -y install epel-release
 ```
 然后按着官网给出的步骤提示命令安装 Certbot
 ```
+yum install certbot
 yum install python2-certbot-nginx
 ```
 ## 安装证书
@@ -34,3 +45,5 @@ certbot certonly --nginx
 ```
 certbot renew
 ```
+## 参考
+- https://learnku.com/articles/19999
